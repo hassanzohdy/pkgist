@@ -157,9 +157,24 @@ export function writeBuildPackageJson(
 
   // Copy allowed fields from source
   for (const field of KEPT_FIELDS) {
-    if (field in sourceJson && sourceJson[field] !== undefined) {
-      output[field] = sourceJson[field];
+    if (!(field in sourceJson) || sourceJson[field] === undefined) continue;
+
+    // Normalize bin paths: npm rejects values that start with "./"
+    if (field === "bin") {
+      const raw = sourceJson[field];
+      if (typeof raw === "string") {
+        output["bin"] = raw.replace(/^\.\//, "");
+      } else if (raw && typeof raw === "object") {
+        const normalized: Record<string, string> = {};
+        for (const [cmd, p] of Object.entries(raw as Record<string, string>)) {
+          normalized[cmd] = p.replace(/^\.\//, "");
+        }
+        output["bin"] = normalized;
+      }
+      continue;
     }
+
+    output[field] = sourceJson[field];
   }
 
   // Override name / version

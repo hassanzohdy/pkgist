@@ -28,7 +28,7 @@ export async function publishPackage(
     "npm-publish",
     pkg.name,
     "npm",
-    ["publish", "--access", access],
+    ["publish", "--access", access, "--registry", "https://registry.npmjs.org"],
     buildPath,
   );
 
