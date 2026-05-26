@@ -15,6 +15,11 @@
   "bin": {
     "pkgist": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "builder.example.ts"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
