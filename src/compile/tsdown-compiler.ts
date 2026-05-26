@@ -13,11 +13,26 @@ import { logger } from "../utils/logger.js";
 /**
  * Collect all dependency names that should be treated as external.
  * Both `dependencies` and `peerDependencies` must never be bundled.
+ *
+ * For each package we emit two entries:
+ *   1. The bare name — for exact imports like `import "react"`
+ *   2. A regex — for subpath imports like `import "react/jsx-runtime"` or
+ *      `import "react-dom/client"`. Without this, rolldown bundles the CJS
+ *      React files and injects a `createRequire` shim that crashes in browsers.
  */
-function collectExternals(sourceJson: Record<string, unknown>): string[] {
+function collectExternals(sourceJson: Record<string, unknown>): (string | RegExp)[] {
   const deps = Object.keys((sourceJson["dependencies"] as Record<string, string> | undefined) ?? {});
   const peers = Object.keys((sourceJson["peerDependencies"] as Record<string, string> | undefined) ?? {});
-  return [...new Set([...deps, ...peers])];
+  const names = [...new Set([...deps, ...peers])];
+
+  const result: (string | RegExp)[] = [];
+  for (const name of names) {
+    result.push(name);
+    // Escape regex metacharacters (handles scoped names like @mongez/events)
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result.push(new RegExp(`^${escaped}\\/`));
+  }
+  return result;
 }
 
 /**
@@ -70,14 +85,15 @@ export async function compilePackage(
 
   const entries = resolveEntries(pkg, packageRoot);
   const formats = pkg.formats ?? ["esm", "cjs"];
-  const externals = collectExternals(sourceJson);
+  const externals: (string | RegExp)[] = collectExternals(sourceJson);
   const tsconfig = findTsconfig(packageRoot);
   const shouldPreserveModules = pkg.preserveModules !== false;
   const srcDir = toForwardSlash(resolvePath(packageRoot, pkg.srcDir ?? "src"));
 
   logger.step(`Compiling ${pkg.name} (${formats.join(", ")}) → ${buildPath}`);
   logger.debug(`  entries:   ${entries.join(", ")}`);
-  logger.debug(`  externals: ${externals.slice(0, 8).join(", ")}${externals.length > 8 ? "…" : ""}`);
+  const externalNames = externals.filter((e): e is string => typeof e === "string");
+  logger.debug(`  externals: ${externalNames.slice(0, 8).join(", ")}${externalNames.length > 8 ? "…" : ""}`);
 
   // Wipe any previous esm/ and cjs/ output so re-runs of the same version don't
   // leave stale files from a different build mode.
