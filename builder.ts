@@ -1,5 +1,7 @@
 import { defineConfig } from "@mongez/pkgist";
 
+const RELEASE_COMMIT = "docs: add auto-trigger metadata for skills + llms files";
+
 export default defineConfig({
   settings: {
     concurrency: 8,
@@ -11,101 +13,117 @@ export default defineConfig({
     {
       name: "@mongez/reinforcements",
       root: "../@mongez/reinforcements",
-      version: "auto",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/agent-kit",
       root: "../@mongez/agent-kit",
-      commit: "Enhanced docs",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       entries: ["index.ts", "cli/index.ts"],
       clone: ["README.md", "bin", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/supportive-is",
       root: "../@mongez/supportive-is",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/cache",
       root: "../@mongez/cache",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/events",
       root: "../@mongez/events",
-      version: "auto",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/collection",
       root: "../@mongez/collection",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/concat-route",
       root: "../@mongez/concat-route",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/query-string",
       root: "../@mongez/query-string",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/dotenv",
       root: "../@mongez/dotenv",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/encryption",
       root: "../@mongez/encryption",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/config",
       root: "../@mongez/config",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/dom",
       root: "../@mongez/dom",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/user",
       root: "../@mongez/user",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/react-router",
       root: "../@mongez/react-router",
       type: "react",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/react-helmet",
       root: "../@mongez/react-helmet",
       type: "react",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@mongez/react-form",
       root: "../@mongez/react-form",
       type: "react",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
     {
@@ -113,7 +131,8 @@ export default defineConfig({
       root: "../@mongez/vite",
       mainType: "esm",
       formats: ["esm"],
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       clone: ["README.md", "skills", "llms.txt", "llms-full.txt"],
     },
   ],
@@ -122,6 +141,7 @@ export default defineConfig({
     {
       name: "atom",
       version: "patch",
+      commit: RELEASE_COMMIT,
       packages: [
         {
           name: "@mongez/atom",
@@ -144,7 +164,8 @@ export default defineConfig({
     },
     {
       name: "localization",
-      version: "minor",
+      version: "patch",
+      commit: RELEASE_COMMIT,
       packages: [
         {
           name: "@mongez/localization",
