@@ -32,8 +32,15 @@ export default defineConfig({
       name: "@my-scope/utils",
       root: "../packages/utils",
       version: "patch",             // "auto" | "patch" | "minor" | "major" | "1.2.3"
-      commit: RELEASE_COMMIT,       // omit to skip git entirely
+      commit: RELEASE_COMMIT,       // string | true | false | undefined — see commit cheatsheet below
       clone: ["README.md", "LICENSE", "skills", "llms.txt", "llms-full.txt"],
+    },
+    {
+      name: "@my-scope/another",
+      root: "../packages/another",
+      version: "patch",
+      commit: true,                 // auto-generates "Released <new-version>" — perfect for hands-off releases
+      clone: ["README.md", "LICENSE"],
     },
     {
       name: "@my-scope/react-utils",
@@ -77,3 +84,15 @@ export default defineConfig({
     },
   ],
 });
+
+/* commit cheatsheet
+ * ------------------
+ * commit: "chore: release"   → use this exact message
+ * commit: true                → auto-generate "Released <new-version>" (hands-off)
+ * commit: false               → explicitly skip git for this package
+ * commit: undefined / omitted → skip git entirely (back-compat default)
+ *
+ * Family-level `commit` always overrides per-package `commit` when set.
+ * A family `commit: true` cascades to every member with their own version
+ * substituted, e.g. "Released 6.0.7" for atom, react-atom, atomic-query alike.
+ */

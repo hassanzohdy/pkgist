@@ -43,8 +43,14 @@ export interface PackageBase {
   publish?: boolean;
   /** npm access scope. default: "public" */
   access?: "public" | "restricted";
-  /** git commit message. if absent, git operations are skipped entirely */
-  commit?: string;
+  /**
+   * Git commit message behaviour:
+   * - `string`    → use this exact message
+   * - `true`      → auto-generate `Released <new-version>`
+   * - `false`     → explicitly skip git (same as omitting `commit`)
+   * - `undefined` → skip git entirely (back-compat default)
+   */
+  commit?: string | boolean;
   /** git branch to push to. default: current branch */
   branch?: string;
 }
@@ -75,7 +81,13 @@ export interface Family {
    * default: "auto"
    */
   version?: "auto" | "patch" | "minor" | "major" | string;
-  /** git commit message that overrides per-package commit */
-  commit?: string;
+  /**
+   * Git commit message that overrides per-package commit. Same shape as
+   * `PackageBase.commit`:
+   * - `string` → use this exact message for every family member
+   * - `true`   → auto-generate `Released <new-version>` for every member
+   * - `false`  → skip git for the whole family
+   */
+  commit?: string | boolean;
   packages: FamilyPackage[];
 }

@@ -1,6 +1,6 @@
 {
   "name": "@mongez/pkgist",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Build, version, and publish tool for TypeScript npm packages. Powered by tsdown.",
   "type": "module",
   "main": "./dist/index.js",

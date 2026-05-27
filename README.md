@@ -100,7 +100,7 @@ Every entry in `standalone[]` and `families[].packages[]` accepts:
 | `clone` | `(string \| [string, string])[]` | `[]` | Files/dirs to copy into build. Strings copy as-is; `["src", "dest"]` renames |
 | `publish` | `boolean` | `true` | Publish to npm |
 | `access` | `"public" \| "restricted"` | `"public"` | npm access level |
-| `commit` | `string` | — | Git commit message. Git is skipped entirely when not set |
+| `commit` | `string \| true \| false` | — | Git commit message. `string` → use verbatim. `true` → auto-generate `Released <new-version>`. `false` / omitted → skip git entirely. |
 | `branch` | `string` | current branch | Git branch to push to |
 
 ### Standalone-only option
@@ -114,7 +114,7 @@ Every entry in `standalone[]` and `families[].packages[]` accepts:
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `version` | `"auto" \| "patch" \| "minor" \| "major" \| string` | `"auto"` | Same strategies as standalone; applied to the highest current version across all family members |
-| `commit` | `string` | — | Commit message applied to all packages (overrides per-package) |
+| `commit` | `string \| true \| false` | — | Commit message applied to all family members (overrides per-package). Same shape as the per-package `commit`. `true` auto-generates `Released <new-version>` for every member with their shared version substituted. |
 
 ---
 
@@ -303,22 +303,41 @@ ESM-only packages (`mainType: "esm"` or `formats: ["esm"]`) get `"type": "module
 
 ## Git workflow
 
-Git operations only run when `commit` is set on the package. Set it per-package in standalone, or once at the family level:
+Git operations run when `commit` resolves to a non-empty message. Three shapes:
 
 ```ts
-// Standalone — per-package
+// 1. Explicit message — string
 { name: "@my-scope/utils", root: "../utils", commit: "chore: release" }
 
-// Family — one message for all members
+// 2. Auto-generated message — boolean true
+//    → produces "Released <new-version>", e.g. "Released 2.1.4"
+{ name: "@my-scope/utils", root: "../utils", commit: true }
+
+// 3. Skip git — omit, or pass false explicitly
+{ name: "@my-scope/utils", root: "../utils" }              // omitted
+{ name: "@my-scope/utils", root: "../utils", commit: false } // explicit skip
+```
+
+**Family-level `commit`** uses the same shape and overrides per-package values:
+
+```ts
+// One explicit message for every family member
 {
   name: "state",
   commit: "feat: improved actions API",
   packages: [ ... ],
 }
+
+// Auto-generated for every member with the shared family version
+{
+  name: "state",
+  commit: true,
+  packages: [ ... ],
+}
 ```
 
 The builder tags each package with `v<version>` and pushes tags automatically.  
-Remove `commit` to skip git entirely (useful for local test builds).
+Pick `false` or omit for local test builds where you want zero git side effects.
 
 ---
 
