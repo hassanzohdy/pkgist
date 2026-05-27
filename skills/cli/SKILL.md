@@ -8,7 +8,7 @@ description: |
 
 # CLI reference
 
-The `pkgist` binary auto-discovers a config file (`pkgist.config.ts` or `builder.ts`) in the current working directory unless `--config` is passed.
+The `pkgist` binary auto-discovers a config file in the current working directory unless `--config` is passed. It tries `pkgist.config.ts`, `pkgist.config.js`, `builder.ts`, `builder.js`, `mongez.ts`, `mongez.js` in that order — see the `configuration` skill for the full discovery rule.
 
 ## Commands
 
