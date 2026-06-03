@@ -81,6 +81,14 @@ export function writeBuildPackageJson(
   sourceJson: SourcePackageJson,
   buildPath: string,
   newVersion: string,
+  /**
+   * Names of all packages in the same family. Any dependency/peerDependency
+   * whose name is in this set is pinned to the exact shared `newVersion` in the
+   * PUBLISHED package.json (the source keeps "*" for workspace linking). This
+   * mirrors the original builder so a released family installs as a coherent,
+   * same-version set instead of leaking "*" to consumers.
+   */
+  familyPackageNames?: Set<string>,
 ): void {
   const formats = pkg.formats ?? ["esm", "cjs"];
   const hasEsm = formats.includes("esm");
@@ -180,6 +188,20 @@ export function writeBuildPackageJson(
   // Override name / version
   output["name"] = pkg.name;
   output["version"] = newVersion;
+
+  // Pin intra-family deps to the exact shared release version. Creates fresh
+  // objects so the source package.json (which keeps "*") is never mutated.
+  if (familyPackageNames && familyPackageNames.size > 0) {
+    for (const field of ["dependencies", "peerDependencies"] as const) {
+      const deps = output[field] as Record<string, string> | undefined;
+      if (!deps) continue;
+      const pinned: Record<string, string> = {};
+      for (const [name, range] of Object.entries(deps)) {
+        pinned[name] = familyPackageNames.has(name) ? newVersion : range;
+      }
+      output[field] = pinned;
+    }
+  }
 
   if (esmOnly) {
     output["type"] = "module";

@@ -181,7 +181,93 @@ export async function compilePackage(
     throw wrapError("tsdown-build", pkg.name, err);
   }
 
+  // Preserve TypeScript module augmentations that rolldown-plugin-dts strips
+  // from preserveModules output (see preserveDtsAugmentations docs).
+  if (pkg.dts !== false && shouldPreserveModules && formats.includes("esm")) {
+    preserveDtsAugmentations(toForwardSlash(resolvePath(buildPath, "esm")));
+  }
+
   logger.success(`Compiled ${pkg.name}`);
+}
+
+// ─── DTS augmentation preservation ───────────────────────────────────────────
+
+/**
+ * Re-link TypeScript module augmentations that `rolldown-plugin-dts` drops from
+ * `preserveModules` declaration output.
+ *
+ * The bundler breaks augmentations two ways:
+ *
+ *  1. **Stripped side-effect imports.** A module whose only job is to augment
+ *     another module (`declare module "..."` + prototype assignments, with no
+ *     value/type exports) is pulled in via a bare `import "./x"`. rolldown-dts
+ *     deletes those bare imports, so the augmentation file is emitted but never
+ *     referenced — TypeScript never loads it. This silently drops chainable
+ *     APIs like seal's `.required()` / `.optional()` and cascade's
+ *     `v.embed()` / `.unique()` from the published types.
+ *
+ *  2. **Extension-less `declare module` specifiers.** Emitted modules import
+ *     each other with explicit `.mjs` extensions, but a relative
+ *     `declare module "../base-validator"` is left without one, so it no longer
+ *     resolves to the same module and the augmentation never merges.
+ *
+ * This pass walks every emitted `.d.mts`, adds the missing `.mjs` extension to
+ * relative `declare module` specifiers, and injects a side-effect `import` for
+ * every augmentation file into the package's root `index.d.mts` — so importing
+ * the package loads all augmentations exactly like the source does.
+ *
+ * @param esmDir - Absolute path to the build's `esm/` output directory.
+ */
+function preserveDtsAugmentations(esmDir: string): void {
+  if (!fs.existsSync(esmDir)) return;
+
+  const dtsFiles: string[] = [];
+  collectDtsFiles(esmDir, dtsFiles);
+
+  const augmentationFiles: string[] = [];
+  for (const file of dtsFiles) {
+    const original = fs.readFileSync(file, "utf8");
+    if (!original.includes("declare module")) continue;
+
+    // Add `.mjs` to relative `declare module "./x"` / "../x" specifiers so they
+    // resolve to the same module the rest of the output imports.
+    const rewritten = original.replace(
+      /declare module\s+"(\.\.?\/[^"]+)"/g,
+      (match, spec: string) =>
+        /\.(mjs|cjs|js|json)$/.test(spec) ? match : `declare module "${spec}.mjs"`,
+    );
+    if (rewritten !== original) fs.writeFileSync(file, rewritten);
+
+    augmentationFiles.push(file);
+  }
+
+  if (augmentationFiles.length === 0) return;
+
+  const rootDts = joinPath(esmDir, "index.d.mts");
+  if (!fs.existsSync(rootDts)) return;
+
+  let root = fs.readFileSync(rootDts, "utf8");
+  const additions: string[] = [];
+  for (const file of augmentationFiles) {
+    if (resolvePath(file) === resolvePath(rootDts)) continue;
+    const rel = "./" + toForwardSlash(path.relative(esmDir, file)).replace(/\.d\.mts$/, ".mjs");
+    const importLine = `import "${rel}";`;
+    if (!root.includes(importLine)) additions.push(importLine);
+  }
+
+  if (additions.length > 0) {
+    root = `${root.replace(/\s*$/, "")}\n${additions.join("\n")}\n`;
+    fs.writeFileSync(rootDts, root);
+  }
+}
+
+/** Recursively collect all `.d.mts` declaration files under `dir`. */
+function collectDtsFiles(dir: string, out: string[]): void {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = joinPath(dir, entry.name);
+    if (entry.isDirectory()) collectDtsFiles(full, out);
+    else if (entry.name.endsWith(".d.mts")) out.push(full);
+  }
 }
 
 function rmTmp(dir: string): void {

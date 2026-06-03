@@ -1,43 +1,76 @@
 ---
 name: mongez-pkgist-overview
 description: |
-  @mongez/pkgist — a build, version, and publish tool for TypeScript/React npm packages. Powered by tsdown (Rolldown/Rust-based bundler). Supports standalone packages (independent versioning) and families (synchronized versioning), dual ESM+CJS output, file cloning, source snapshots, git tag+push automation, and dry-run mode.
-  TRIGGER when: user installs, imports, or asks about `@mongez/pkgist`; user mentions `pkgist` CLI; user runs `pkgist build`, `pkgist build:family`, `pkgist build:all`, `pkgist list`, `pkgist validate`; user asks "how do I release my packages", "how do I build TypeScript packages with ESM+CJS", "what tool builds @mongez packages"; user is editing `pkgist.config.ts` or `builder.ts`; questions about monorepo release tooling for TS packages.
-  SKIP: questions about other release tools (lerna, changesets, semantic-release, release-please); questions about the underlying bundler `tsdown` specifically (use tsdown docs); operational playbook for releasing the @mongez monorepo (use `releasing-mongez-monorepo` skill instead).
+  @mongez/pkgist — build, version, and publish tool for TypeScript/React npm packages. Powered by tsdown (Rolldown/Rust-based). Standalone packages or version-synchronised families, dual ESM+CJS, git tag+push automation, dry-run mode.
 ---
 
 # @mongez/pkgist — Overview
 
-A build, version, and publish tool for TypeScript/React npm packages. Powered by [tsdown](https://tsdown.dev) (Rolldown/Rust-based bundler).
+A build, version, and publish tool for TypeScript/React npm packages. Powered by [tsdown](https://tsdown.dev) (Rolldown/Rust-based bundler). Configure once, ship many packages — standalone with independent versioning or grouped into families with synchronised versioning. Dual ESM+CJS output, asset cloning, git tag + push automation, dry-run mode that touches nothing.
 
-## What it does
+## Highlighted features
 
-For each registered package, pkgist:
+<div class="mongez-highlights">
 
-1. Reads the source `package.json` and resolves the next version (auto-patch by default).
-2. Compiles `src/` with tsdown into `esm/` + `cjs/` + `.d.ts` files.
+<div class="mongez-highlight" data-accent="ice">
+  <svg class="mongez-highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+  <h3>tsdown-powered builds</h3>
+  <p>Rolldown under the hood — Rust-fast compilation, dual ESM+CJS output, <code>.d.ts</code> emission, sub-path entries, zero per-package boilerplate.</p>
+</div>
+
+<div class="mongez-highlight" data-accent="ice">
+  <svg class="mongez-highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+  <h3>Standalone or family</h3>
+  <p><code>standalone[]</code> bumps versions independently. <code>families[]</code> synchronises versions across grouped packages — one bump moves the whole family.</p>
+</div>
+
+<div class="mongez-highlight" data-accent="fire">
+  <svg class="mongez-highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  <h3>Auto-versioning</h3>
+  <p>Defaults to patch bumps. Set <code>version: "minor"</code> or <code>"major"</code> per package or family. Source <code>package.json</code> updates in place, ready to commit.</p>
+</div>
+
+<div class="mongez-highlight" data-accent="fire">
+  <svg class="mongez-highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+  <h3>Git tag + push automation</h3>
+  <p><code>commit: true</code> stages the version bump, tags <code>v&lt;version&gt;</code>, and pushes per repo. Custom commit message via <code>commit: "Released &lt;version&gt;"</code>.</p>
+</div>
+
+<div class="mongez-highlight" data-accent="bolt">
+  <svg class="mongez-highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+  <h3><code>--dry-run</code> mode</h3>
+  <p>Inspect every step (snapshot, compile, clone, commit, publish) without touching disk, git, or npm. Catch surprises before they ship.</p>
+</div>
+
+<div class="mongez-highlight" data-accent="bolt">
+  <svg class="mongez-highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+  <h3>Asset cloning</h3>
+  <p><code>clone: ["README.md", "LICENSE", "skills"]</code> — whitelisted files copy verbatim into the build. Your published package always has its docs.</p>
+</div>
+
+</div>
+
+## What pkgist does, per package
+
+1. Reads source `package.json`, resolves the next version (auto-patch by default).
+2. Compiles `src/` with tsdown into `esm/` + `cjs/` + `.d.ts`.
 3. Clones whitelisted assets (README, LICENSE, skills, llms.txt, etc.) into the build.
 4. Writes a clean `package.json` for the build (no devDeps, no scripts).
-5. Updates the source `package.json` version in place.
+5. Updates source `package.json` version in place.
 6. Commits, tags `v<version>`, and pushes (when `commit` is set).
-7. Publishes to npm with the configured access.
+7. Publishes to npm with configured access.
 
-The full pipeline runs per-package in parallel up to the configured concurrency.
+Per-package pipelines run in parallel up to the configured concurrency.
 
 ## Install
 
 ```sh
-# npm  (dev dep, recommended)
 npm install -D @mongez/pkgist
-
-# yarn
-yarn add -D @mongez/pkgist
-
-# pnpm
-pnpm add -D @mongez/pkgist
+# or: yarn add -D @mongez/pkgist
+# or: pnpm add -D @mongez/pkgist
 ```
 
-Prefer the dev-dep install — it pins the version per repo. The global install (`npm install -g @mongez/pkgist` etc.) is also supported when you want a single CLI binary across all your projects.
+Prefer the dev-dep install — it pins the version per repo. Global install (`npm install -g @mongez/pkgist`) is also supported when you want one CLI binary across projects.
 
 Add convenience scripts:
 
@@ -50,12 +83,10 @@ Add convenience scripts:
 }
 ```
 
-## Quick example
-
-Once a `pkgist.config.ts` exists (see the minimum config below), the release flow is two commands — dry-run first to inspect, then real build:
+## Quick peek
 
 ```sh
-# Inspect every step (snapshot, compile, clone, commit, publish) without touching disk / git / npm
+# Inspect every step without touching disk / git / npm
 npx pkgist build:all --dry-run
 
 # Real run: bumps versions, commits + tags + pushes per repo, publishes to npm
@@ -64,9 +95,11 @@ npx pkgist build:all
 # Target one package
 npx pkgist build @my-scope/utils
 
-# Target a synchronized family (all family members share the new version)
+# Target a synchronized family (all members share the new version)
 npx pkgist build:family core
 ```
+
+Once a `pkgist.config.ts` exists, the release flow is two commands — dry-run first to inspect, then real build.
 
 ## Minimum viable config
 
@@ -90,29 +123,17 @@ export default defineConfig({
 
 That's the floor. From there:
 
-- Add `commit: true` to enable auto-tagged git commits with `Released <version>` messages.
+- Add `commit: true` for auto-tagged git commits with `Released <version>` messages.
 - Add `clone: ["README.md", "LICENSE"]` to ship docs.
 - Add `version: "minor"` to bump beyond patch.
 - Group related packages into `families[]` to share a version.
 
-## When to reach for pkgist
+## Where to go next
 
-| Situation | Use pkgist? |
-|---|---|
-| Solo TypeScript package, want ESM+CJS output | ✅ |
-| Monorepo of TypeScript packages, want one tool to release all | ✅ |
-| Need synchronized versioning across a group of related packages | ✅ (families) |
-| Want git tag + npm publish + version bump in one step | ✅ |
-| Need changelog generation | ❌ pair with conventional-changelog or release-please |
-| Need semantic-release-style commit-message-driven versioning | ❌ pkgist is explicit-version-strategy, not commit-driven |
-| Only need npm publish (no build, no git) | ❌ overkill — use `npm publish` directly |
-
-## Further reading
-
-- `configuration` skill — full config shape, `defineConfig`, `settings`
-- `package-options` skill — every per-package field
-- `cli` skill — every command + flag
-- `pipeline` skill — what happens step-by-step per package
-- `versioning` skill — auto/patch/minor/major + family rules
-- `git-workflow` skill — commit shapes (string / true / false), tagging, push
-- `recipes` skill — common patterns ready to copy
+- **[CLI](../cli/)** — every command + flag (`build`, `build:all`, `build:family`, `validate`, `list`)
+- **[Configuration](../configuration/)** — full config shape, `defineConfig`, `settings`
+- **[Package options](../package-options/)** — every per-package field
+- **[Pipeline](../pipeline/)** — what happens step-by-step per package
+- **[Versioning](../versioning/)** — auto/patch/minor/major + family rules
+- **[Git workflow](../git-workflow/)** — commit shapes (`string` / `true` / `false`), tagging, push
+- **[Recipes](../recipes/)** — common patterns ready to copy

@@ -63,18 +63,6 @@ export default defineConfig({
 });
 ```
 
-## When to reach for pkgist
-
-- Solo TypeScript package wanting dual ESM+CJS output — yes.
-- Monorepo of TypeScript packages wanting one tool to release all — yes.
-- Synchronized versioning across related packages — yes (families).
-- Need git tag + npm publish + version bump in one step — yes.
-- Need changelog generation — no, pair with conventional-changelog or release-please.
-- Need semantic-release-style commit-driven versioning — no, pkgist is explicit-strategy.
-- Only need `npm publish` (no build, no git) — overkill, use npm directly.
-
----
-
 # Configuration
 
 > **Auto-trigger:** user creating or editing `pkgist.config.ts` or `builder.ts`; user asks "how do I set up pkgist", "what goes in the config", "where do I configure pkgist"; user imports `defineConfig`; questions about `settings.concurrency`, `settings.buildDir`, `settings.sourcesDir`, or how `standalone[]` differs from `families[]`.
