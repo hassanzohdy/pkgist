@@ -9,6 +9,7 @@ import {
   registerBuildAllCommand,
   registerListCommand,
   registerValidateCommand,
+  registerInitCommand,
 } from "./commands/index.js";
 import { setVerbose } from "./utils/logger.js";
 
@@ -39,6 +40,7 @@ program
   });
 
 // Register all subcommands
+registerInitCommand(program);
 registerBuildCommand(program);
 registerBuildFamilyCommand(program);
 registerBuildAllCommand(program);

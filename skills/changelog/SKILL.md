@@ -1,7 +1,7 @@
 ---
 name: mongez-pkgist-changelog
 description: |
-  Release history for `@mongez/pkgist` — what changed in each version. Load this to answer "what's new in pkgist", "when did intra-family dependency pinning land", "which version fixed `--no-git`", "what changed between versions", or before bumping/releasing pkgist. Mirrors the package CHANGELOG.md (Keep a Changelog + SemVer). Newest version first.
+  Release history for `@mongez/pkgist` — what changed in each version, each entry dated (`## [x.y.z] - YYYY-MM-DD`). Load this to answer "what's new in pkgist", "when did intra-family dependency pinning land", "which version fixed `--no-git`", "what changed between versions", or before bumping/releasing pkgist. Mirrors the package CHANGELOG.md (Keep a Changelog + SemVer). Newest version first.
 ---
 
 # Changelog
@@ -10,7 +10,28 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ---
 
-## [1.2.0]
+## [1.3.0] - 2026-06-04
+
+### Added
+
+- **`pkgist init` command.** Scaffolds a `pkgist.config.ts` in the current directory (`buildDir: "./builds"`, `sourcesDir: "./sources"`, one example package). Skips an existing config unless `--force` is passed — the fastest path from `npm install` to a working config.
+
+### Changed
+
+- **Single config file.** Config discovery now recognises only `pkgist.config.ts` (then `pkgist.config.js`). The `builder.ts` / `builder.js` / `mongez.ts` / `mongez.js` legacy aliases are gone. Pass `--config <path>` for a custom location. *Migration: rename `builder.ts` → `pkgist.config.ts`.*
+- The shipped example template is renamed `builder.example.ts` → `pkgist.config.example.ts`.
+- **pkgist now publishes ESM-only** (`mainType: "esm"`, `formats: ["esm"]`). It targets Node 18+.
+
+### Fixed
+
+- **The published `pkgist` CLI binary runs.** Earlier releases shipped a CommonJS binary (`cjs/cli.cjs`) that crashed on the first log line — `chalk` v5 is ESM-only and can't be `require`d from CommonJS. Publishing ESM-only (`bin` → `esm/cli.mjs`) means `npx pkgist`, `pkgist init`, and every command actually work for installed consumers. (Internal monorepo releases were unaffected — they run the ESM engine, not the published binary.)
+
+### Docs
+
+- Rewrote the README into a professional, beginner→advanced reference.
+- Every changelog entry is now dated — here, in the docs Change Logs page, and in `CHANGELOG.md`.
+
+## [1.2.0] - 2026-06-04
 
 ### Added
 
@@ -29,7 +50,7 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 - Corrected long-standing drift in `llms-full.txt`: the "kept fields" list (dropped the fields that pkgist actually strips), the source-snapshot exclusion list (added `.turbo`, `.cache`), and the config auto-discovery note (six filenames, not two).
 - Aligned the documented git pipeline to the real commands: `git add -A` and `git push origin --tags`.
 
-## [1.1.3]
+## [1.1.3] - 2026-06-03
 
 ### Added
 
@@ -39,7 +60,7 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 - Reconciled several documentation drift items against source during a skills polish pass.
 
-## [1.1.2]
+## [1.1.2] - 2026-05-29
 
 ### Added
 
@@ -47,7 +68,7 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 > Version history prior to 1.1.0 is available via the git tags and GitHub releases on [hassanzohdy/pkgist](https://github.com/hassanzohdy/pkgist).
 
-## [1.1.0]
+## [1.1.0] - 2026-05-27
 
 ### Added
 

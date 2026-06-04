@@ -6,6 +6,5 @@ node_modules
 /build
 
 # Local release config — each consumer writes their own.
-# See builder.example.ts for the template.
-builder.ts
+# See pkgist.config.example.ts for the template, or run `pkgist init`.
 pkgist.config.ts

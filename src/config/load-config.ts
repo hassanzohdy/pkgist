@@ -106,16 +106,20 @@ function validateConfig(config: BundlerConfig, filePath: string): void {
 
 /**
  * Attempt to find the default config file in the working directory.
- * Tries: builder.ts, builder.js, mongez.ts, mongez.js
+ * Tries `pkgist.config.ts` then `pkgist.config.js` (first match wins).
+ *
+ * pkgist recognises a single config name — `pkgist.config.{ts,js}` — on purpose:
+ * one obvious file, no legacy aliases to wonder about. Run `pkgist init` to
+ * scaffold one. Use `--config <path>` for a non-default location.
  */
 export function findDefaultConfigPath(cwd: string): string {
-  const candidates = ["pkgist.config.ts", "pkgist.config.js", "builder.ts", "builder.js", "mongez.ts", "mongez.js"];
+  const candidates = ["pkgist.config.ts", "pkgist.config.js"];
   for (const candidate of candidates) {
     const full = path.join(cwd, candidate);
     if (fs.existsSync(full)) return full;
   }
   throw new Error(
     `No config file found in ${cwd}. Tried: ${candidates.join(", ")}. ` +
-      `Use --config <path> to specify a custom location.`,
+      `Run \`pkgist init\` to create one, or use --config <path> to specify a custom location.`,
   );
 }

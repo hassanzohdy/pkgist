@@ -1,11 +1,13 @@
 /**
- * Example pkgist release config.
+ * A fully-worked pkgist release config.
  *
- * Copy this file to `builder.ts` (or `pkgist.config.ts`) in your project root
- * and customize for your packages. The real config is gitignored — each user
- * writes their own.
+ * Quickest start: run `pkgist init` to drop a minimal `pkgist.config.ts` in your
+ * project root. Use this file as a richer reference — copy it to
+ * `pkgist.config.ts` and customize for your packages. The real config is
+ * gitignored, so each project writes its own.
  *
  * CLI usage:
+ *   pkgist init                       # scaffold a pkgist.config.ts (if missing)
  *   pkgist validate                   # check the config + package roots exist
  *   pkgist list                       # show all registered packages + versions
  *   pkgist build @scope/pkg           # build one standalone package
@@ -22,29 +24,29 @@ const RELEASE_COMMIT = "chore: release";
 export default defineConfig({
   settings: {
     concurrency: 8,           // parallel build limit
-    buildDir: "../builds",    // where compiled packages are written
-    sourcesDir: "../sources", // source snapshots (excludes .git, node_modules)
+    buildDir: "./builds",     // where compiled packages are written
+    sourcesDir: "./sources",  // source snapshots (excludes .git, node_modules)
   },
 
   // Standalone packages — each versions independently.
   standalone: [
     {
       name: "@my-scope/utils",
-      root: "../packages/utils",
+      root: "./packages/utils",
       version: "patch",             // "auto" | "patch" | "minor" | "major" | "1.2.3"
       commit: RELEASE_COMMIT,       // string | true | false | undefined — see commit cheatsheet below
       clone: ["README.md", "LICENSE", "skills", "llms.txt", "llms-full.txt"],
     },
     {
       name: "@my-scope/another",
-      root: "../packages/another",
+      root: "./packages/another",
       version: "patch",
       commit: true,                 // auto-generates "Released <new-version>" — perfect for hands-off releases
       clone: ["README.md", "LICENSE"],
     },
     {
       name: "@my-scope/react-utils",
-      root: "../packages/react-utils",
+      root: "./packages/react-utils",
       type: "react",                // adds JSX support
       version: "patch",
       commit: RELEASE_COMMIT,
@@ -52,7 +54,7 @@ export default defineConfig({
     },
     {
       name: "@my-scope/vite-plugin",
-      root: "../packages/vite-plugin",
+      root: "./packages/vite-plugin",
       mainType: "esm",              // primary format
       formats: ["esm"],             // ESM-only output
       version: "patch",
@@ -71,12 +73,12 @@ export default defineConfig({
       packages: [
         {
           name: "@my-scope/state-core",
-          root: "../packages/state-core",
+          root: "./packages/state-core",
           clone: ["README.md", "LICENSE"],
         },
         {
           name: "@my-scope/react-state",
-          root: "../packages/react-state",
+          root: "./packages/react-state",
           type: "react",
           clone: ["README.md", "LICENSE"],
         },

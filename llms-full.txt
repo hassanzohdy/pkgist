@@ -2,7 +2,7 @@
 
 > Complete API + workflow reference for `@mongez/pkgist`. Concatenation of every per-topic skill, intended for single-fetch loading by AI agents.
 
-> **Auto-trigger when loading this full reference:** code or config imports `defineConfig` from `@mongez/pkgist`; user runs `pkgist build`, `pkgist build:family`, `pkgist build:all`, `pkgist list`, `pkgist validate`; user edits `pkgist.config.ts` or `builder.ts`; user asks "how do I release my packages with pkgist", "how do I configure pkgist for X", "what does pkgist do step by step", "how do family versions work", "how do I auto-generate commit messages", "what's `commit: true`", "what files end up in the published package"; user is debugging a pkgist build or pipeline step.
+> **Auto-trigger when loading this full reference:** code or config imports `defineConfig` from `@mongez/pkgist`; user runs `pkgist init`, `pkgist build`, `pkgist build:family`, `pkgist build:all`, `pkgist list`, `pkgist validate`; user edits `pkgist.config.ts`; user asks "how do I release my packages with pkgist", "how do I configure pkgist for X", "what does pkgist do step by step", "how do family versions work", "how do I auto-generate commit messages", "what's `commit: true`", "what files end up in the published package"; user is debugging a pkgist build or pipeline step.
 >
 > **Skip when:** questions about other release tools (lerna, changesets, semantic-release, release-please); questions about the underlying bundler `tsdown` specifically (use tsdown docs); operational playbook for releasing a specific monorepo (use that project's own RELEASING.md or `.claude/skills/`); generic semver/npm/git questions not tied to pkgist.
 
@@ -65,13 +65,14 @@ export default defineConfig({
 
 # Configuration
 
-> **Auto-trigger:** user creating or editing `pkgist.config.ts` or `builder.ts`; user asks "how do I set up pkgist", "what goes in the config", "where do I configure pkgist"; user imports `defineConfig`; questions about `settings.concurrency`, `settings.buildDir`, `settings.sourcesDir`, or how `standalone[]` differs from `families[]`.
+> **Auto-trigger:** user creating or editing `pkgist.config.ts`; user runs `pkgist init`; user asks "how do I set up pkgist", "what goes in the config", "where do I configure pkgist"; user imports `defineConfig`; questions about `settings.concurrency`, `settings.buildDir`, `settings.sourcesDir`, or how `standalone[]` differs from `families[]`.
 > **Skip when:** per-package field details (use Package options); CLI invocation (use CLI); semver rules (use Versioning); git behavior (use Git workflow).
 
-pkgist auto-discovers a config file in cwd, trying these names in order (first match wins):
-`pkgist.config.ts` (preferred), `pkgist.config.js`, `builder.ts` (legacy alias), `builder.js`, `mongez.ts` (legacy alias), `mongez.js`.
+pkgist auto-discovers a single config name in cwd: **`pkgist.config.ts`** then **`pkgist.config.js`** (first match wins). No legacy aliases. Run `pkgist init` to scaffold one, or pass `--config <path>`.
 
 Loaded at runtime via dynamic `import()`; `.ts` configs are loaded through `tsx`. Use ESM `import` syntax freely.
+
+`pkgist init` writes a starter `pkgist.config.ts` (`buildDir: "./builds"`, `sourcesDir: "./sources"`, one example package) and never overwrites an existing config unless `--force` is passed.
 
 ## defineConfig shape
 
@@ -408,10 +409,21 @@ Or `pkgist build:all --no-git` to skip git for the whole run, overriding any `co
 
 # CLI
 
-> **Auto-trigger:** user runs or asks about `pkgist build`, `pkgist build:family`, `pkgist build:all`, `pkgist list`, `pkgist validate`; user asks about `--dry-run`, `--no-publish`, `--no-git`, `--concurrency`, `--config`, `--verbose`; "how do I release just one package", "how do I dry-run", "what does pkgist list show".
+> **Auto-trigger:** user runs or asks about `pkgist init`, `pkgist build`, `pkgist build:family`, `pkgist build:all`, `pkgist list`, `pkgist validate`; user asks about `--dry-run`, `--no-publish`, `--no-git`, `--concurrency`, `--config`, `--verbose`; "how do I scaffold a config", "how do I release just one package", "how do I dry-run", "what does pkgist list show".
 > **Skip when:** per-package config (Package options); pipeline internals (Pipeline); git/publish in depth (Git workflow).
 
 ## Commands
+
+### `init`
+
+Scaffold a `pkgist.config.ts` in the current directory (`buildDir: "./builds"`, `sourcesDir: "./sources"`, one example package).
+
+```sh
+pkgist init
+pkgist init --force        # overwrite an existing config
+```
+
+Does nothing (exit `0`) if a `pkgist.config.ts` / `pkgist.config.js` already exists, unless `--force`.
 
 ### `build [pkg...]`
 
@@ -814,7 +826,15 @@ Or per-package `commit: false`.
 
 > **Auto-trigger:** user asks what's new in pkgist, what changed between versions, or which version introduced/fixed a behavior. Mirrors `CHANGELOG.md` (Keep a Changelog + SemVer). Newest first.
 
-## [1.2.0]
+## [1.3.0] - 2026-06-04
+
+- **Added — `pkgist init`** scaffolds a `pkgist.config.ts` (`./builds`, `./sources`, one example package); skips an existing config unless `--force`.
+- **Changed — single config name.** Discovery recognises only `pkgist.config.ts` then `pkgist.config.js`; the `builder.ts` / `mongez.ts` aliases are removed. Migration: rename `builder.ts` → `pkgist.config.ts`. The example template is renamed `pkgist.config.example.ts`.
+- **Changed — pkgist publishes ESM-only** (`mainType: "esm"`, `formats: ["esm"]`); targets Node 18+.
+- **Fixed — the published `pkgist` binary runs.** It shipped as CommonJS (`cjs/cli.cjs`) but `chalk` v5 is ESM-only and crashes when `require`d; the ESM-only binary (`esm/cli.mjs`) fixes `npx pkgist` / `pkgist init` for installed consumers.
+- **Docs** — professional, beginner→advanced README rewrite; every changelog entry is now dated.
+
+## [1.2.0] - 2026-06-04
 
 - **Added — intra-family dependency pinning.** Family builds now pin `dependencies` / `peerDependencies` that name another family member to the exact shared release version in the published `package.json` (source keeps `"*"`). Standalone builds unaffected.
 - **Added — `changelog` skill** + a Change Logs docs page.
@@ -823,15 +843,15 @@ Or per-package `commit: false`.
 - **Fixed — published `pkgist` CLI binary** (`bin` pointed at `dist/cli.js`, absent from the engine build; now `cjs/cli.cjs`).
 - **Docs** — documented dep pinning everywhere; corrected `llms-full.txt` drift (kept-fields list, snapshot exclusions, config filename count); aligned git wording to `git add -A` / `git push origin --tags`.
 
-## [1.1.3]
+## [1.1.3] - 2026-06-03
 
 - **Added** — per-topic skills + `llms.txt` / `llms-full.txt`, expanded install (npm/yarn/pnpm) with a CLI quick example, CI build smoke-test workflow (Node 20/22).
 - **Fixed** — reconciled documentation drift against source.
 
-## [1.1.2]
+## [1.1.2] - 2026-05-29
 
 - **Added** — the changelog. No code changes.
 
-## [1.1.0]
+## [1.1.0] - 2026-05-27
 
 - **Added** — `commit` accepts `true` (auto `Released <version>`) / `false` (explicit skip) in addition to a string.
