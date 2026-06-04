@@ -142,6 +142,20 @@ family version: "auto"  →  5.1.4  (all three land on 5.1.4)
 
 This means if you add a new package to a family at `0.1.0`, it jumps to match the family on first build — which is intentional. The family version is the compatibility contract.
 
+### Intra-family dependency pinning
+
+Sibling packages in a monorepo reference each other with `"*"` so the workspace links them locally. `"*"` must never reach npm — it lets a consumer resolve a sibling to *any* published version, breaking the "whole family on one exact version" contract. So during a **family build**, pkgist rewrites every `dependencies` / `peerDependencies` entry whose name is **another family member** to the **exact** shared release version in the *published* `package.json`:
+
+```jsonc
+// SOURCE (kept as-is for workspace linking)
+"dependencies": { "@scope/atom": "*" }
+
+// PUBLISHED at family version 5.1.4 (not "*", not "^5.1.4" — exact)
+"dependencies": { "@scope/atom": "5.1.4" }
+```
+
+This is **family-builds-only** — standalone builds publish their deps verbatim. Only family-member names are rewritten; every other dependency keeps its original range. The source `package.json` is never mutated.
+
 ---
 
 ## CLI reference
@@ -291,12 +305,12 @@ ESM-only packages (`mainType: "esm"` or `formats: ["esm"]`) get `"type": "module
 1. Load source `package.json` → read current version
 2. Resolve new version (auto-bump or explicit)
 3. Create build output directory
-4. Snapshot source to `sourcesDir/` — full copy excluding `.git`, `node_modules`, `dist`
+4. Snapshot source to `sourcesDir/` — full copy excluding `.git`, `node_modules`, `dist`, `.turbo`, `.cache`
 5. Compile with **tsdown** → `esm/` and `cjs/` subdirectories
 6. Clone extra files/directories listed in `clone`
 7. Write clean `package.json` for the build
 8. Update source `package.json` version in-place
-9. Git: `add .` → `commit` → `push` → `tag v<version>` → `push tags` *(if `commit` is set)*
+9. Git: `add -A` → `commit` → `push` → `tag v<version>` → `push origin --tags` *(if `commit` is set)*
 10. `npm publish --access <public|restricted>` from build directory *(if `publish !== false`)*
 
 ---

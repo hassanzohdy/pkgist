@@ -9,8 +9,10 @@ import type { BuildResult } from "../build/package-builder.js";
 
 interface BuildAllOptions {
   dryRun?: boolean;
-  noPublish?: boolean;
-  noGit?: boolean;
+  // commander stores negated flags under their POSITIVE attribute:
+  // `--no-publish` → publish === false, `--no-git` → git === false.
+  publish?: boolean;
+  git?: boolean;
   config?: string;
   concurrency?: string;
 }
@@ -32,11 +34,12 @@ export function registerBuildAllCommand(program: Command): void {
 
       const rawOpts = opts as Record<string, unknown>;
       const shouldPublish = rawOpts["publish"] !== false;
+      const shouldGit = rawOpts["git"] !== false;
 
       const buildOptions: BuildOptions = {
         dryRun: opts.dryRun ?? false,
         noPublish: !shouldPublish,
-        noGit: opts.noGit ?? false,
+        noGit: !shouldGit,
         concurrency: opts.concurrency ? parseInt(opts.concurrency, 10) : undefined,
         configPath,
       };

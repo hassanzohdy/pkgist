@@ -1,6 +1,12 @@
+---
+name: mongez-pkgist-changelog
+description: |
+  Release history for `@mongez/pkgist` — what changed in each version. Load this to answer "what's new in pkgist", "when did intra-family dependency pinning land", "which version fixed `--no-git`", "what changed between versions", or before bumping/releasing pkgist. Mirrors the package CHANGELOG.md (Keep a Changelog + SemVer). Newest version first.
+---
+
 # Changelog
 
-All notable changes to `@mongez/pkgist` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to `@mongez/pkgist` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). This skill is the source-of-truth mirror of the package `CHANGELOG.md` — keep both in lockstep on every release.
 
 ---
 
@@ -8,8 +14,8 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ### Added
 
-- **Intra-family dependency pinning.** In a family build, any `dependencies` / `peerDependencies` entry that names another family member is now pinned to the **exact** shared release version in the published `package.json` (the source keeps `"*"` for workspace linking). Standalone builds are unaffected. This stops `"*"` from leaking to consumers and keeps a released family installable as one coherent, same-version set.
-- **`changelog` skill** (`skills/changelog/`) mirroring this file, plus a Change Logs page in the docs site — so version history auto-loads for AI agents and is tracked on every release.
+- **Intra-family dependency pinning.** In a family build, any `dependencies` / `peerDependencies` entry that names another family member is now pinned to the **exact** shared release version in the published `package.json` (the source keeps `"*"` for workspace linking). Standalone builds are unaffected. This stops `"*"` from leaking to consumers and keeps a released family installable as one coherent, same-version set. See the `versioning` skill.
+- **`changelog` skill** (this file), plus a Change Logs page in the docs site — so version history auto-loads for AI agents and is tracked on every release.
 
 ### Fixed
 

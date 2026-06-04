@@ -8,8 +8,11 @@ import type { BuildOptions } from "../types/index.js";
 interface BuildCommandOptions {
   all?: boolean;
   dryRun?: boolean;
-  noPublish?: boolean;
-  noGit?: boolean;
+  // commander stores negated flags under their POSITIVE attribute:
+  // `--no-publish` → publish === false, `--no-git` → git === false.
+  // (There is no `noPublish` / `noGit` property — reading those always yields undefined.)
+  publish?: boolean;
+  git?: boolean;
   config?: string;
   concurrency?: string;
 }
@@ -30,19 +33,19 @@ export function registerBuildCommand(program: Command): void {
 
       const { config, configDir } = await loadConfig(configPath);
 
+      // commander stores `--no-publish` as publish=false and `--no-git` as git=false.
+      // Read those positive attributes; the `noPublish`/`noGit` names are never set.
+      const rawOpts = opts as Record<string, unknown>;
+      const shouldPublish = rawOpts["publish"] !== false;
+      const shouldGit = rawOpts["git"] !== false;
+
       const buildOptions: BuildOptions = {
         dryRun: opts.dryRun ?? false,
-        noPublish: !opts.noPublish, // commander flips --no-publish to noPublish=false
-        noGit: opts.noGit ?? false,
+        noPublish: !shouldPublish,
+        noGit: !shouldGit,
         concurrency: opts.concurrency ? parseInt(opts.concurrency, 10) : undefined,
         configPath,
       };
-
-      // Fix: commander's --no-publish sets opts.publish = false (not opts.noPublish)
-      // We need to check for the raw value
-      const rawOpts = opts as Record<string, unknown>;
-      const shouldPublish = rawOpts["publish"] !== false;
-      buildOptions.noPublish = !shouldPublish;
 
       const standalone = config.standalone ?? [];
 

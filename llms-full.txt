@@ -68,11 +68,10 @@ export default defineConfig({
 > **Auto-trigger:** user creating or editing `pkgist.config.ts` or `builder.ts`; user asks "how do I set up pkgist", "what goes in the config", "where do I configure pkgist"; user imports `defineConfig`; questions about `settings.concurrency`, `settings.buildDir`, `settings.sourcesDir`, or how `standalone[]` differs from `families[]`.
 > **Skip when:** per-package field details (use Package options); CLI invocation (use CLI); semver rules (use Versioning); git behavior (use Git workflow).
 
-pkgist auto-discovers a config file in cwd. Two filenames are recognised:
-- `pkgist.config.ts` (preferred)
-- `builder.ts` (legacy alias)
+pkgist auto-discovers a config file in cwd, trying these names in order (first match wins):
+`pkgist.config.ts` (preferred), `pkgist.config.js`, `builder.ts` (legacy alias), `builder.js`, `mongez.ts` (legacy alias), `mongez.js`.
 
-Loaded at runtime via dynamic `import()`. Use ESM `import` syntax freely.
+Loaded at runtime via dynamic `import()`; `.ts` configs are loaded through `tsx`. Use ESM `import` syntax freely.
 
 ## defineConfig shape
 
@@ -289,6 +288,19 @@ Adding a low-versioned package to a family means it jumps to match the family on
 
 `version` is family-level only — members don't declare their own.
 
+### Intra-family dependency pinning
+
+Sibling packages reference each other with `"*"` in source so the workspace links them locally. `"*"` must never reach npm — a consumer could resolve a sibling to any published version. So in a **family build**, pkgist rewrites every `dependencies` / `peerDependencies` entry whose name is another **family member** to the **exact** shared release version in the *published* `package.json` (source keeps `"*"`):
+
+```jsonc
+// SOURCE (workspace linking, unchanged)   →   PUBLISHED at family version 5.1.4
+"dependencies": { "@scope/atom": "*" }     →   "dependencies": { "@scope/atom": "5.1.4" }
+```
+
+- Family builds only — standalone builds publish deps verbatim.
+- `dependencies` + `peerDependencies` only; non-member deps keep their original range.
+- Exact version, no `^` / `~`, so a family installs as one coherent same-version set.
+
 ## Picking the right strategy
 
 | Change type | Use |
@@ -336,16 +348,16 @@ For families: pick based on the most significant change in any member.
 When `commit` resolves to a non-empty message, in the package's `root`:
 
 ```
-1. git add .
+1. git add -A
 2. git commit -m "<message>"
 3. git push origin <branch>
 4. git tag v<new-version>
-5. git push origin v<new-version>
+5. git push origin --tags
 ```
 
-Branch from `pkg.branch` or `git rev-parse --abbrev-ref HEAD`.
+Branch from `pkg.branch` or `git rev-parse --abbrev-ref HEAD`. Step 5 pushes all local tags, including the new `v<new-version>`.
 
-**`git add .` adds everything dirty**, not just the version bump. Clean the tree before release to keep commits focused.
+**`git add -A` stages everything dirty**, not just the version bump. Clean the tree before release to keep commits focused.
 
 ## Family-level commit override
 
@@ -507,13 +519,13 @@ Builds run in parallel; one failure doesn't stop others.
 1. Load source package.json → read current version
 2. Resolve new version (auto-bump or explicit)
 3. Create build output directory (buildDir/<name>/<new-version>/)
-4. Snapshot source to sourcesDir/<name>/ — full copy excluding .git, node_modules, dist
+4. Snapshot source to sourcesDir/<name>/ — full copy excluding .git, node_modules, dist, .turbo, .cache
    (only if settings.sourcesDir is set)
 5. Compile with tsdown → esm/ and cjs/ subdirectories
 6. Clone extra files/directories listed in `clone`
 7. Write clean package.json for the build (no devDeps, no scripts)
 8. Update source package.json version in-place
-9. Git: add . → commit → push → tag v<version> → push tags
+9. Git: add -A → commit → push → tag v<version> → push origin --tags
    (only if commit resolves to a non-empty string)
 10. npm publish --access <public|restricted> from build directory
     (only if publish !== false)
@@ -606,9 +618,13 @@ When `mainType: "esm"` or `formats: ["esm"]`:
 
 Clean generation — NOT a verbatim copy:
 
-- **Kept**: `name`, `description`, `version`, `author`, `license`, `repository`, `homepage`, `bugs`, `keywords`, `dependencies`, `peerDependencies`, `optionalDependencies`, `peerDependenciesMeta`, `engines`, `sideEffects`, `bin`, `os`, `cpu`, `funding`, `files`, `publishConfig`
-- **Replaced**: `main`, `module`, `types`, `exports`, `type`
-- **Dropped**: `devDependencies`, `scripts`, `private`, `workspaces`, everything else
+- **Kept**: `name`, `description`, `keywords`, `author`, `license`, `repository`, `homepage`, `bugs`, `dependencies`, `peerDependencies`, `sideEffects`, `bin`, `engines`
+- **Replaced / set**: `name`, `version`, `main`, `module`, `types`, `exports`, `type` (set to `"module"` for ESM-only builds)
+- **Dropped**: everything else — `devDependencies`, `scripts`, `private`, `workspaces`, `optionalDependencies`, `peerDependenciesMeta`, `files`, `publishConfig`, etc.
+
+### Intra-family dependency pinning (family builds only)
+
+In a family build, kept `dependencies` / `peerDependencies` entries that name another family member are rewritten to the exact shared release version (source `"*"` → e.g. `"5.1.4"`). Standalone builds publish deps verbatim. See the Versioning section.
 
 ### bin normalization
 
@@ -616,7 +632,7 @@ Leading `./` stripped from `bin` values. `{"my-cli": "./dist/cli.js"}` → `{"my
 
 ## Source snapshots (optional)
 
-If `settings.sourcesDir` is set, pkgist archives source per build (minus `.git`, `node_modules`, `dist`) into `<sourcesDir>/<name>/`. Useful for:
+If `settings.sourcesDir` is set, pkgist archives source per build (minus `.git`, `node_modules`, `dist`, `.turbo`, `.cache`) into `<sourcesDir>/<name>/`. Useful for:
 - Reconstructing what shipped at any time
 - Diffing published versions without checking out tags
 - Recovering from edits between build and publish
@@ -791,3 +807,31 @@ pkgist build:all --no-git
 ```
 
 Or per-package `commit: false`.
+
+---
+
+# Changelog
+
+> **Auto-trigger:** user asks what's new in pkgist, what changed between versions, or which version introduced/fixed a behavior. Mirrors `CHANGELOG.md` (Keep a Changelog + SemVer). Newest first.
+
+## [1.2.0]
+
+- **Added — intra-family dependency pinning.** Family builds now pin `dependencies` / `peerDependencies` that name another family member to the exact shared release version in the published `package.json` (source keeps `"*"`). Standalone builds unaffected.
+- **Added — `changelog` skill** + a Change Logs docs page.
+- **Fixed — `--no-git` is now honoured** (was silently ignored: the flag is stored as `git=false`, but the commands read `opts.noGit`). Affects `build`, `build:family`, `build:all`.
+- **Fixed — `src/build/` tracked by git again** (a bare `build` `.gitignore` rule matched at any depth and untracked the build-pipeline source; rules anchored to `/dist`, `/build`).
+- **Fixed — published `pkgist` CLI binary** (`bin` pointed at `dist/cli.js`, absent from the engine build; now `cjs/cli.cjs`).
+- **Docs** — documented dep pinning everywhere; corrected `llms-full.txt` drift (kept-fields list, snapshot exclusions, config filename count); aligned git wording to `git add -A` / `git push origin --tags`.
+
+## [1.1.3]
+
+- **Added** — per-topic skills + `llms.txt` / `llms-full.txt`, expanded install (npm/yarn/pnpm) with a CLI quick example, CI build smoke-test workflow (Node 20/22).
+- **Fixed** — reconciled documentation drift against source.
+
+## [1.1.2]
+
+- **Added** — the changelog. No code changes.
+
+## [1.1.0]
+
+- **Added** — `commit` accepts `true` (auto `Released <version>`) / `false` (explicit skip) in addition to a string.

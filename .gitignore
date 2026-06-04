@@ -1,6 +1,9 @@
 node_modules
-dist
-build
+# Anchored to the package root: a bare `dist` / `build` would also match
+# `src/build/` and silently untrack the build-pipeline source. Keep the leading
+# slash so only the root output dirs are ignored.
+/dist
+/build
 
 # Local release config — each consumer writes their own.
 # See builder.example.ts for the template.
