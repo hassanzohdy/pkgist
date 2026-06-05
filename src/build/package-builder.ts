@@ -74,9 +74,12 @@ export async function buildPackage(
     const sourceJson = readSourcePackageJson(packageRoot, pkg.name);
     const currentVersion = sourceJson.version;
 
-    // 3. Determine new version
+    // 3. Determine new version. The CLI `--bump` override (options.versionOverride)
+    //    beats the per-package strategy; a family-forced version still wins over both,
+    //    because the family builder already folded any override into forcedVersion.
     const newVersion =
-      forcedVersion ?? resolveVersion(currentVersion, versionStrategy, pkg.name);
+      forcedVersion ??
+      resolveVersion(currentVersion, options.versionOverride ?? versionStrategy, pkg.name);
 
     logger.info(`Building ${pkg.name}: ${currentVersion} → ${newVersion}`);
 
@@ -126,7 +129,9 @@ export async function buildPackage(
     }
 
     // 10. Git operations (only if commit message resolves and --no-git is not passed)
-    const rawCommit = overrideCommit ?? pkg.commit;
+    //     Precedence: CLI `--commit` (options.commitOverride) > family/explicit
+    //     override > per-package config `commit`.
+    const rawCommit = options.commitOverride ?? overrideCommit ?? pkg.commit;
     const commitMessage = resolveCommitMessage(rawCommit, newVersion);
     if (commitMessage && !options.noGit) {
       const branch = pkg.branch ?? (await currentBranch(packageRoot));

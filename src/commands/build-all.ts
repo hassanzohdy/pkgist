@@ -15,6 +15,13 @@ interface BuildAllOptions {
   git?: boolean;
   config?: string;
   concurrency?: string;
+  // `--bump <strategy>`: a value-bearing option → string (or undefined when absent).
+  // Named `--bump` (not `--version`) because commander reserves `--version` for the
+  // root program's version printer, which would intercept it before this subcommand.
+  bump?: string;
+  // `--commit [message]`: an optional-arg option → string when a message is given,
+  // `true` for a bare `--commit` (auto message), or undefined when absent.
+  commit?: string | boolean;
 }
 
 export function registerBuildAllCommand(program: Command): void {
@@ -26,6 +33,14 @@ export function registerBuildAllCommand(program: Command): void {
     .option("--no-git", "Skip git operations")
     .option("--config <path>", "Path to config file")
     .option("--concurrency <n>", "Override concurrency")
+    .option(
+      "--bump <strategy>",
+      "Override the configured version for every built package this run: patch | minor | major | auto | an explicit x.y.z",
+    )
+    .option(
+      "--commit [message]",
+      'Override the configured commit for every built package this run: a message string, or a bare --commit to auto-generate "Released <version>"',
+    )
     .action(async (opts: BuildAllOptions) => {
       const configPath =
         opts.config ?? findDefaultConfigPath(process.cwd());
@@ -42,6 +57,8 @@ export function registerBuildAllCommand(program: Command): void {
         noGit: !shouldGit,
         concurrency: opts.concurrency ? parseInt(opts.concurrency, 10) : undefined,
         configPath,
+        versionOverride: opts.bump,
+        commitOverride: opts.commit,
       };
 
       const concurrency = buildOptions.concurrency ?? config.settings.concurrency ?? 4;

@@ -30,7 +30,8 @@ export async function buildFamily(
 
   let newVersion: string;
   try {
-    const strategy = family.version ?? "auto";
+    // CLI `--bump` overrides the family's configured version for this run.
+    const strategy = options.versionOverride ?? family.version ?? "auto";
     const isBumpKeyword = strategy === "auto" || strategy === "patch" || strategy === "minor" || strategy === "major";
 
     if (!isBumpKeyword && semver.valid(semver.coerce(strategy) ?? strategy)) {

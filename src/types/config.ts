@@ -30,4 +30,20 @@ export interface BuildOptions {
   noGit: boolean;
   concurrency?: number;
   configPath: string;
+  /**
+   * CLI `--bump <strategy>` override. When set, it takes precedence over every
+   * targeted package's (or family's) configured `version` for this run only —
+   * the config file is never mutated. Same shape as the config `version` field:
+   * "auto" | "patch" | "minor" | "major" | an explicit semver string.
+   * (Named `--bump` on the CLI because commander reserves `--version` for the
+   * root program's version printer.)
+   */
+  versionOverride?: string;
+  /**
+   * CLI `--commit [message]` override. When set, it takes precedence over the
+   * targeted package's (or family's) configured `commit` for this run only.
+   * Same shape as `PackageBase.commit`: a message string, or `true` (auto
+   * "Released <version>"). To skip git instead, pass `--no-git`.
+   */
+  commitOverride?: string | boolean;
 }
