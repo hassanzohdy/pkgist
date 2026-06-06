@@ -16,33 +16,36 @@ export function resolvePath(...segments: string[]): string {
 }
 
 /**
- * Given a package name like "@mongez/reinforcements",
- * return just the scoped part without the scope prefix: "reinforcements".
- */
-export function scopelessName(packageName: string): string {
-  const slash = packageName.indexOf("/");
-  return slash === -1 ? packageName : packageName.slice(slash + 1);
-}
-
-/**
- * Build the versioned build output path:
- *   <buildDir>/<scopeless-name>/<version>/
+ * Build the versioned build output path. The package name is preserved verbatim
+ * so scoped packages get a real scope directory:
+ *
+ *   "@mongez/pkgist"   → <buildDir>/@mongez/pkgist/<version>/
+ *   "@warlock.js/core" → <buildDir>/@warlock.js/core/<version>/
+ *   "create-warlock"   → <buildDir>/create-warlock/<version>/      (unscoped → root)
+ *
+ * This keeps scoped families grouped on disk (mirroring how npm lays out
+ * `node_modules/@scope/...`) so a release runner that hosts many packages
+ * stays organised instead of flattening every package into a single directory.
  */
 export function buildOutputPath(
   buildDir: string,
   packageName: string,
   version: string,
 ): string {
-  return joinPath(buildDir, scopelessName(packageName), version);
+  return joinPath(buildDir, packageName, version);
 }
 
 /**
- * Build the sources snapshot path:
- *   <sourcesDir>/<scopeless-name>/
+ * Build the sources snapshot path. Same scope-preserving layout as
+ * `buildOutputPath`, without the version segment:
+ *
+ *   "@mongez/pkgist"   → <sourcesDir>/@mongez/pkgist/
+ *   "@warlock.js/core" → <sourcesDir>/@warlock.js/core/
+ *   "create-warlock"   → <sourcesDir>/create-warlock/
  */
 export function sourceSnapshotPath(
   sourcesDir: string,
   packageName: string,
 ): string {
-  return joinPath(sourcesDir, scopelessName(packageName));
+  return joinPath(sourcesDir, packageName);
 }

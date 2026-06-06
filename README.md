@@ -302,7 +302,7 @@ For each package, in order (steps 4 and 9 are conditional):
 ```
 1.  Read source package.json → current version
 2.  Resolve the new version (auto-bump or explicit)
-3.  Create the build output directory  (buildDir/<name>/<version>/)
+3.  Create the build output directory  (buildDir/<package-name>/<version>/ — scope preserved as a directory; see §Output structure)
 4.  Snapshot source → sourcesDir   (only if sourcesDir is set)
 5.  Compile with tsdown → esm/ and cjs/
 6.  Clone extra files/dirs listed in `clone`
@@ -316,10 +316,10 @@ Packages run in parallel up to `concurrency`; within one package, steps are sequ
 
 ### Output structure (`preserveModules: true`, default)
 
-Each source file becomes its own output file, so production stack traces show real file names (`array/chunk.mjs:4`) instead of bundle offsets.
+Each source file becomes its own output file, so production stack traces show real file names (`array/chunk.mjs:4`) instead of bundle offsets. The **scope is preserved as a directory** so `@mongez/utils` lands at `builds/@mongez/utils/<version>/` (unscoped packages live at the root):
 
 ```
-builds/utils/2.1.1/
+builds/@scope/utils/2.1.1/
 ├── package.json        ← clean: no devDeps, no scripts
 ├── README.md           ← cloned
 ├── esm/  index.mjs · index.d.mts · array/chunk.mjs · …
