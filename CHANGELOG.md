@@ -4,6 +4,13 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ---
 
+## [1.6.1] - 2026-08-11
+
+### Changed
+
+- **CI now runs the test suite.** The Build workflow was `npm ci` + `npm run build` only, carrying a comment that said "pkgist ships no test suite" — stale as of 1.6.0, and it meant the 54 release-integrity assertions never ran anywhere but a developer's machine. A `Test` step runs `npm test` on all three matrix legs (Node 20 / 22 on Ubuntu, Node 20 on Windows) before the build.
+- **Documented the lockfile trap in the workflow itself.** 1.6.0's release commit failed CI because `vitest` was added to `devDependencies` without refreshing `package-lock.json`, and `npm ci` rejects a mismatch. The non-obvious part is that inside the parent yarn workspace a plain `npm install --package-lock-only` reports "up to date" and writes nothing — the entry only lands with `npm install <pkg> --save-dev --package-lock-only --workspaces=false`. That is now a comment on the install step, where the next person will hit it.
+
 ## [1.6.0] - 2026-08-11
 
 **Release integrity.** Everything here closes one gap: pkgist reported the outcome of the run it *attempted*, not the outcome of the run that *happened*. Exit code, per-package status, and the final summary were all produced whether or not each step did what it was asked.
