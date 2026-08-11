@@ -1,4 +1,3 @@
-import path from "path";
 import { copyDir, ensureDir } from "../files/file-manager.js";
 import {
   readSourcePackageJson,
@@ -8,24 +7,21 @@ import {
 import { cloneFiles } from "../files/clone-files.js";
 import { compilePackage } from "../compile/tsdown-compiler.js";
 import { resolveVersion } from "../version/increment.js";
-import { gitCommitTagPush, currentBranch } from "../git/operations.js";
+import { gitRelease, currentBranch } from "../git/operations.js";
 import { resolveCommitMessage } from "../git/resolve-commit.js";
 import { publishPackage } from "../publish/npm-publisher.js";
 import { buildOutputPath, sourceSnapshotPath, resolvePath } from "../utils/paths.js";
 import { wrapError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
+import { DEFAULT_ATTEMPTS } from "../utils/retry.js";
+import { phasesAreClean } from "../types/result.js";
 import type { PackageBase, BuildOptions, BuilderSettings } from "../types/index.js";
+import type { BuildResult, PhaseOutcome } from "../types/result.js";
 
-export interface BuildResult {
-  packageName: string;
-  version: string;
-  buildPath: string;
-  success: boolean;
-  error?: Error;
-}
+export type { BuildResult } from "../types/result.js";
 
 /**
- * Execute the full build pipeline for a single package.
+ * Execute the full release pipeline for a single package.
  *
  * Steps:
  * 1. Resolve package root
@@ -37,8 +33,21 @@ export interface BuildResult {
  * 7. Clone extra files
  * 8. Write build package.json
  * 9. Update source package.json version
- * 10. Git: add, commit, push, tag
- * 11. npm publish
+ * 10. Git: commit → push → tag        ← must land before anything irreversible
+ * 11. npm publish, then verify against the registry
+ *
+ * **Ordering rule:** git comes before publish, and a push that could not be
+ * confirmed on the remote blocks that package's publish. Publishing is
+ * irreversible outside npm's 72-hour window; a push is retryable forever. The
+ * previous order did the reversible thing first, ignored its failure, and then
+ * did the irreversible one anyway — which is how packages shipped to npm with
+ * their source not in version control.
+ *
+ * Ordering alone does not close the window: a crash between push and publish
+ * still leaves an unpublished pushed commit. That is the *recoverable*
+ * direction, which is why it is the right order — and the check-then-act
+ * probes in each step are what let the next run finish the job instead of
+ * redoing it.
  */
 export async function buildPackage(
   pkg: PackageBase,
@@ -65,6 +74,12 @@ export async function buildPackage(
   familyPackageNames?: Set<string>,
 ): Promise<BuildResult> {
   const step = "package-builder";
+  const phases: PhaseOutcome[] = [];
+  const attempts = options.retries ?? DEFAULT_ATTEMPTS;
+  const verify = options.verifyPublish !== false;
+
+  let newVersion = "";
+  let buildPath = "";
 
   try {
     // 1. Resolve absolute package root
@@ -77,7 +92,7 @@ export async function buildPackage(
     // 3. Determine new version. The CLI `--bump` override (options.versionOverride)
     //    beats the per-package strategy; a family-forced version still wins over both,
     //    because the family builder already folded any override into forcedVersion.
-    const newVersion =
+    newVersion =
       forcedVersion ??
       resolveVersion(currentVersion, options.versionOverride ?? versionStrategy, pkg.name);
 
@@ -85,7 +100,7 @@ export async function buildPackage(
 
     // 4. Build output directory
     const absoluteBuildDir = resolvePath(configDir, settings.buildDir);
-    const buildPath = buildOutputPath(absoluteBuildDir, pkg.name, newVersion);
+    buildPath = buildOutputPath(absoluteBuildDir, pkg.name, newVersion);
 
     if (!options.dryRun) {
       ensureDir(buildPath);
@@ -105,7 +120,13 @@ export async function buildPackage(
     }
 
     // 6. Compile with tsdown
-    await compilePackage(pkg, packageRoot, buildPath, sourceJson as Record<string, unknown>, options.dryRun);
+    await compilePackage(
+      pkg,
+      packageRoot,
+      buildPath,
+      sourceJson as Record<string, unknown>,
+      options.dryRun,
+    );
 
     // 7. Clone extra files
     if (pkg.clone && pkg.clone.length > 0) {
@@ -128,50 +149,99 @@ export async function buildPackage(
       logger.info(`[dry-run] update source package.json version → ${newVersion}`);
     }
 
-    // 10. Git operations (only if commit message resolves and --no-git is not passed)
+    phases.push({ phase: "compile", status: "ok" });
+
+    // 10. Git — BEFORE publish.
     //     Precedence: CLI `--commit` (options.commitOverride) > family/explicit
     //     override > per-package config `commit`.
     const rawCommit = options.commitOverride ?? overrideCommit ?? pkg.commit;
     const commitMessage = resolveCommitMessage(rawCommit, newVersion);
-    if (commitMessage && !options.noGit) {
-      const branch = pkg.branch ?? (await currentBranch(packageRoot));
-      // Git is non-fatal: a package whose remote has diverged (e.g. unrelated
-      // histories) or has no remote must STILL publish to npm. We commit/tag/push
-      // best-effort and only warn on failure — npm publish is the source of truth.
-      try {
-        await gitCommitTagPush(
-          packageRoot,
-          pkg.name,
-          newVersion,
-          commitMessage,
-          branch,
-          options.dryRun,
-        );
-      } catch (gitErr) {
-        const reason = (gitErr as Error).message.split("\n")[0];
-        logger.warn(`[git] ${pkg.name}: git step failed (${reason}) — continuing to npm publish`);
-      }
+
+    let commitIsOnRemote = true;
+
+    if (options.noGit) {
+      const detail = "--no-git";
+      phases.push(
+        { phase: "commit", status: "skipped", detail },
+        { phase: "push", status: "skipped", detail },
+        { phase: "tag", status: "skipped", detail },
+      );
     } else if (!commitMessage) {
-      logger.debug(`[git] ${pkg.name}: no commit message set — skipping git`);
-    }
-
-    // 11. npm publish
-    if (!options.noPublish) {
-      await publishPackage(pkg, buildPath, options.dryRun);
+      const detail = "no commit message configured";
+      phases.push(
+        { phase: "commit", status: "skipped", detail },
+        { phase: "push", status: "skipped", detail },
+        { phase: "tag", status: "skipped", detail },
+      );
+      logger.debug(`[git] ${pkg.name}: ${detail} — skipping git`);
     } else {
-      logger.info(`[publish] ${pkg.name}: --no-publish, skipping`);
+      const branch = pkg.branch ?? (await currentBranch(packageRoot));
+      const git = await gitRelease({
+        packageRoot,
+        packageName: pkg.name,
+        version: newVersion,
+        commitMessage,
+        branch,
+        dryRun: options.dryRun,
+        attempts,
+      });
+      phases.push(...git.phases);
+      commitIsOnRemote = git.commitIsOnRemote;
     }
 
-    return { packageName: pkg.name, version: newVersion, buildPath, success: true };
+    // 11. npm publish — gated on the commit being verifiably on the remote.
+    if (options.noPublish) {
+      const detail = "--no-publish";
+      phases.push(
+        { phase: "publish", status: "skipped", detail },
+        { phase: "verify", status: "skipped", detail },
+      );
+      logger.info(`[publish] ${pkg.name}: ${detail}, skipping`);
+    } else if (!commitIsOnRemote) {
+      const detail = "release commit is not on the remote — refusing to publish";
+      phases.push(
+        { phase: "publish", status: "skipped", detail },
+        { phase: "verify", status: "skipped", detail },
+      );
+      logger.error(`[publish] ${pkg.name}: ${detail}`);
+    } else {
+      phases.push(
+        ...(await publishPackage({
+          pkg,
+          version: newVersion,
+          buildPath,
+          dryRun: options.dryRun,
+          attempts,
+          verify,
+        })),
+      );
+    }
+
+    return {
+      packageName: pkg.name,
+      version: newVersion,
+      buildPath,
+      success: phasesAreClean(phases),
+      phases,
+    };
   } catch (err) {
     const wrapped = wrapError(step, pkg.name, err);
     logger.error(`Failed to build ${pkg.name}: ${wrapped.message}`);
+
+    // Anything thrown before the phase list got its own entry is a compile-time
+    // (or setup) failure — record it so the summary can name a phase rather
+    // than just the package.
+    if (!phases.some(p => p.phase === "compile")) {
+      phases.push({ phase: "compile", status: "failed", detail: wrapped.message.split("\n")[0] });
+    }
+
     return {
       packageName: pkg.name,
-      version: "",
-      buildPath: "",
+      version: newVersion,
+      buildPath,
       success: false,
       error: wrapped,
+      phases,
     };
   }
 }

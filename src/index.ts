@@ -18,9 +18,21 @@ export type { LoadedConfig } from "./config/load-config.js";
 
 // Programmatic build API
 export { buildPackage } from "./build/package-builder.js";
-export type { BuildResult } from "./build/package-builder.js";
 export { buildFamily } from "./build/family-builder.js";
 export { runParallel } from "./build/parallel-builder.js";
+export type {
+  BuildResult,
+  PhaseName,
+  PhaseStatus,
+  PhaseOutcome,
+} from "./types/result.js";
+
+// Release integrity
+export { reportRun, reportFamily, narrowingNotes } from "./report/run-report.js";
+export type { RunScope, RunReport } from "./report/run-report.js";
+export { queryPublishedVersion, classifyRegistryResponse } from "./publish/registry.js";
+export type { RegistryState, RegistryAnswer } from "./publish/registry.js";
+export { withRetry, isRetryableError } from "./utils/retry.js";
 
 // Version utilities
 export { resolveVersion } from "./version/increment.js";

@@ -46,4 +46,21 @@ export interface BuildOptions {
    * "Released <version>"). To skip git instead, pass `--no-git`.
    */
   commitOverride?: string | boolean;
+  /**
+   * Total attempts (including the first) for each network-class operation —
+   * push, tag push, publish. Defaults to 3. Non-network failures are never
+   * retried regardless of this value.
+   */
+  retries?: number;
+  /**
+   * Read the published version back from the registry after publishing, and
+   * treat a version the registry does not serve as a failed publish.
+   *
+   * Defaults to true. `npm publish` exiting 0 is not proof the package
+   * arrived — during the 2026-08-11 incident it exited 0 for a package that
+   * never reached the registry, and only a registry read caught it. Disable
+   * with `--no-verify-publish` when working against a registry that cannot be
+   * queried.
+   */
+  verifyPublish?: boolean;
 }

@@ -4,8 +4,9 @@ import { buildPackage } from "../build/package-builder.js";
 import { buildFamily } from "../build/family-builder.js";
 import { runParallel } from "../build/parallel-builder.js";
 import { logger } from "../utils/logger.js";
+import { reportRun, reportFamily, narrowingNotes } from "../report/run-report.js";
 import type { BuildOptions } from "../types/index.js";
-import type { BuildResult } from "../build/package-builder.js";
+import type { BuildResult } from "../types/result.js";
 
 interface BuildAllOptions {
   dryRun?: boolean;
@@ -13,8 +14,10 @@ interface BuildAllOptions {
   // `--no-publish` → publish === false, `--no-git` → git === false.
   publish?: boolean;
   git?: boolean;
+  verifyPublish?: boolean;
   config?: string;
   concurrency?: string;
+  retries?: string;
   // `--bump <strategy>`: a value-bearing option → string (or undefined when absent).
   // Named `--bump` (not `--version`) because commander reserves `--version` for the
   // root program's version printer, which would intercept it before this subcommand.
@@ -31,8 +34,10 @@ export function registerBuildAllCommand(program: Command): void {
     .option("--dry-run", "Print what would happen without making any changes")
     .option("--no-publish", "Skip npm publish")
     .option("--no-git", "Skip git operations")
+    .option("--no-verify-publish", "Skip the post-publish registry read-back")
     .option("--config <path>", "Path to config file")
     .option("--concurrency <n>", "Override concurrency")
+    .option("--retries <n>", "Attempts per network operation, including the first (default 3)")
     .option(
       "--bump <strategy>",
       "Override the configured version for every built package this run: patch | minor | major | auto | an explicit x.y.z",
@@ -50,6 +55,7 @@ export function registerBuildAllCommand(program: Command): void {
       const rawOpts = opts as Record<string, unknown>;
       const shouldPublish = rawOpts["publish"] !== false;
       const shouldGit = rawOpts["git"] !== false;
+      const shouldVerify = rawOpts["verifyPublish"] !== false;
 
       const buildOptions: BuildOptions = {
         dryRun: opts.dryRun ?? false,
@@ -59,6 +65,8 @@ export function registerBuildAllCommand(program: Command): void {
         configPath,
         versionOverride: opts.bump,
         commitOverride: opts.commit,
+        retries: opts.retries ? parseInt(opts.retries, 10) : undefined,
+        verifyPublish: shouldVerify,
       };
 
       const concurrency = buildOptions.concurrency ?? config.settings.concurrency ?? 4;
@@ -96,13 +104,25 @@ export function registerBuildAllCommand(program: Command): void {
             configDir,
           );
           allResults.push(...familyResults);
+          reportFamily(family.name, familyResults);
         }
       }
 
-      const succeeded = allResults.filter((r) => r.success).length;
-      const failed = allResults.filter((r) => !r.success).length;
+      if (allResults.length === 0) {
+        logger.error("Config contains no standalone packages and no families. Nothing was built.");
+        process.exit(1);
+      }
 
-      logger.info(`\nSummary: ${succeeded} succeeded, ${failed} failed out of ${allResults.length} total`);
-      process.exit(failed > 0 ? 1 : 0);
+      const { exitCode } = reportRun(allResults, {
+        command: "build:all",
+        narrowed: narrowingNotes({
+          noPublish: buildOptions.noPublish,
+          noGit: buildOptions.noGit,
+          verifyPublish: shouldVerify,
+        }),
+        dryRun: buildOptions.dryRun,
+      });
+
+      process.exit(exitCode);
     });
 }

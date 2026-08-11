@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { loadConfig, findDefaultConfigPath } from "../config/index.js";
 import { buildFamily } from "../build/family-builder.js";
 import { logger } from "../utils/logger.js";
+import { reportRun, reportFamily, narrowingNotes } from "../report/run-report.js";
 import type { BuildOptions } from "../types/index.js";
 
 interface BuildFamilyOptions {
@@ -10,8 +11,10 @@ interface BuildFamilyOptions {
   // `--no-publish` → publish === false, `--no-git` → git === false.
   publish?: boolean;
   git?: boolean;
+  verifyPublish?: boolean;
   config?: string;
   concurrency?: string;
+  retries?: string;
   // `--bump <strategy>`: a value-bearing option → string (or undefined when absent).
   // Named `--bump` (not `--version`) because commander reserves `--version` for the
   // root program's version printer, which would intercept it before this subcommand.
@@ -28,8 +31,10 @@ export function registerBuildFamilyCommand(program: Command): void {
     .option("--dry-run", "Print what would happen without making any changes")
     .option("--no-publish", "Skip npm publish")
     .option("--no-git", "Skip git operations")
+    .option("--no-verify-publish", "Skip the post-publish registry read-back")
     .option("--config <path>", "Path to config file")
     .option("--concurrency <n>", "Override concurrency")
+    .option("--retries <n>", "Attempts per network operation, including the first (default 3)")
     .option(
       "--bump <strategy>",
       "Override the family's configured version for this run: patch | minor | major | auto | an explicit x.y.z",
@@ -47,6 +52,7 @@ export function registerBuildFamilyCommand(program: Command): void {
       const rawOpts = opts as Record<string, unknown>;
       const shouldPublish = rawOpts["publish"] !== false;
       const shouldGit = rawOpts["git"] !== false;
+      const shouldVerify = rawOpts["verifyPublish"] !== false;
 
       const buildOptions: BuildOptions = {
         dryRun: opts.dryRun ?? false,
@@ -56,6 +62,8 @@ export function registerBuildFamilyCommand(program: Command): void {
         configPath,
         versionOverride: opts.bump,
         commitOverride: opts.commit,
+        retries: opts.retries ? parseInt(opts.retries, 10) : undefined,
+        verifyPublish: shouldVerify,
       };
 
       const family = (config.families ?? []).find((f) => f.name === familyName);
@@ -69,7 +77,21 @@ export function registerBuildFamilyCommand(program: Command): void {
       }
 
       const results = await buildFamily(family, config.settings, buildOptions, configDir);
-      const anyFailed = results.some((r) => !r.success);
-      process.exit(anyFailed ? 1 : 0);
+
+      // A lockstep family that lost a member is broken, not partially shipped —
+      // say so before the per-package detail.
+      reportFamily(familyName, results);
+
+      const { exitCode } = reportRun(results, {
+        command: `build:family ${familyName}`,
+        narrowed: narrowingNotes({
+          noPublish: buildOptions.noPublish,
+          noGit: buildOptions.noGit,
+          verifyPublish: shouldVerify,
+        }),
+        dryRun: buildOptions.dryRun,
+      });
+
+      process.exit(exitCode);
     });
 }
