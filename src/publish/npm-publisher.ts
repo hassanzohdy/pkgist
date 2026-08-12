@@ -2,8 +2,58 @@ import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
 import { withRetry } from "../utils/retry.js";
 import { NPM_REGISTRY, queryPublishedVersion } from "./registry.js";
+import type { RegistryAnswer } from "./registry.js";
 import type { PackageBase } from "../types/index.js";
 import type { PhaseOutcome } from "../types/result.js";
+
+/** Waits between post-publish verification attempts, in milliseconds. */
+const SETTLE_DELAYS_MS = [1500, 3000, 5000, 8000];
+
+/**
+ * Attempts for the post-publish read-back.
+ *
+ * Deliberately its own number rather than reusing `--retries`: that budget is
+ * for transport failures, whereas this one is waiting for registry
+ * propagation. Five attempts spans ~17s of waiting, which comfortably covers
+ * the lag observed in practice while still failing in bounded time if the
+ * version genuinely never arrives.
+ */
+const VERIFY_ATTEMPTS = 5;
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/**
+ * Re-query the registry until it serves the version, or the attempts run out.
+ *
+ * Only the POST-publish check needs this. The pre-publish "is it already
+ * there?" probe must NOT retry: `absent` is the normal, expected answer there,
+ * and retrying it would add a pointless delay to every single package.
+ *
+ * `absent` and `unknown` are both retried here, because immediately after a
+ * publish either can mean "not yet" rather than "not ever".
+ */
+export async function settleVerification(
+  packageName: string,
+  version: string,
+  attempts: number,
+  waits: number[] = SETTLE_DELAYS_MS,
+  wait: (ms: number) => Promise<void> = sleep,
+): Promise<RegistryAnswer> {
+  const total = Math.max(1, attempts);
+  let answer = await queryPublishedVersion(packageName, version);
+
+  for (let attempt = 2; attempt <= total && answer.state !== "present"; attempt++) {
+    const delay = waits[Math.min(attempt - 2, waits.length - 1)];
+    logger.debug(
+      `[verify] ${packageName}: registry does not serve ${version} yet ` +
+        `(attempt ${attempt - 1}/${total}) — waiting ${delay}ms for propagation`,
+    );
+    await wait(delay);
+    answer = await queryPublishedVersion(packageName, version);
+  }
+
+  return answer;
+}
 
 export interface PublishInput {
   pkg: PackageBase;
@@ -96,7 +146,15 @@ export async function publishPackage(input: PublishInput): Promise<PhaseOutcome[
   }
 
   // Read back. npm exiting 0 is exactly the signal that lied last time.
-  const answer = await queryPublishedVersion(pkg.name, version);
+  //
+  // The read-back must allow for propagation: the registry does not always
+  // serve a version the instant `npm publish` returns, so a single immediate
+  // query answers "absent" for a publish that in fact succeeded. Observed on
+  // the first real release after this check shipped — the run was marked
+  // INCOMPLETE and exited 1 while the version was on npm seconds later.
+  // A false alarm here is expensive: it is indistinguishable from the real
+  // defect this check exists to catch, and it teaches operators to ignore it.
+  const answer = await settleVerification(pkg.name, version, VERIFY_ATTEMPTS);
 
   if (answer.state === "present") {
     logger.success(`Published ${pkg.name}@${version} (verified on registry)`);
@@ -105,7 +163,7 @@ export async function publishPackage(input: PublishInput): Promise<PhaseOutcome[
   }
 
   if (answer.state === "absent") {
-    const detail = `npm publish reported success but the registry does not serve ${version}${
+    const detail = `npm publish reported success but the registry still does not serve ${version} after ${VERIFY_ATTEMPTS} checks over ~17s${
       answer.detail ? ` (${answer.detail})` : ""
     }`;
     logger.error(`[verify] ${pkg.name}: ${detail}`);
