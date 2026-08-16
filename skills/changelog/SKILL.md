@@ -10,6 +10,20 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ---
 
+## [1.6.3] - 2026-08-16
+
+### Fixed
+
+- **Published manifests silently dropped `peerDependenciesMeta`, publishing every optional peer as required.** `src/files/package-json.ts` built the published `package.json` from a 13-field allow-list (`KEPT_FIELDS`). Any field not on that list — `peerDependenciesMeta`, `optionalDependencies`, `publishConfig`, `os`, `cpu`, `imports`, `browser`, `funding`, `contributors` — vanished from every build, silently. npm 7+ masked the damage for `peerDependenciesMeta` by auto-installing the peer anyway; pnpm strict mode and Yarn PnP do not, and error instead. `optionalDependencies` had the opposite, worse failure mode: the dependency disappeared entirely rather than installing-if-possible, so any code path requiring it threw `MODULE_NOT_FOUND` at runtime in the published package.
+
+  The allow-list is now a deny-list: every field in the source `package.json` is kept unless it's dev-time-only, monorepo/root-only, a tool config block, or `files` (which pkgist must still deny outright — it emits a purpose-built output directory, so a source `files: ["src"]` would ship an empty tarball). `version`/`main`/`module`/`types`/`typings`/`exports`/`type` stay denied too, so the computed overrides don't have to clobber a pre-seeded value.
+
+### Tests
+
+New `src/__tests__/package-json.test.ts`: `peerDependenciesMeta` round-trips intact (the regression test); `optionalDependencies`/`publishConfig`/`os`/`cpu`/`imports`/`funding`/`contributors` survive; `scripts`/`devDependencies`/`private`/`workspaces`/`files` are absent from the output; computed fields win over source values and `typings` doesn't leak; family pinning never mutates the source object; and a self-policing guard asserting every source key is either in the output or the deny-list.
+
+> **Note:** this skill's mirror was missing the 1.6.0–1.6.2 entries (present in the package `CHANGELOG.md`) before this update — a pre-existing drift, not introduced here. Worth a follow-up backfill.
+
 ## [1.5.0] - 2026-06-06
 
 ### Changed

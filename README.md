@@ -346,11 +346,11 @@ Set `preserveModules: false` to bundle each format into a single `index.js` (fin
 
 ### What ships in the published `package.json`
 
-pkgist generates a clean `package.json` — it does **not** copy yours verbatim.
+pkgist generates a clean `package.json` — it does **not** copy yours verbatim, but it's source-first: everything you wrote is kept unless it's on a small deny-list.
 
-- **Kept:** `name`, `description`, `keywords`, `author`, `license`, `repository`, `homepage`, `bugs`, `dependencies`, `peerDependencies`, `sideEffects`, `bin`, `engines`.
-- **Replaced / set:** `name`, `version`, `main`, `module`, `types`, `exports`, `type`.
-- **Dropped:** everything else (`devDependencies`, `scripts`, `private`, `workspaces`, `files`, `publishConfig`, …).
+- **Kept:** everything, including `peerDependenciesMeta`, `optionalDependencies`, `publishConfig`, `os`, `cpu`, `imports`, `browser`, `funding`, `contributors` — except the fields below.
+- **Replaced / set:** `name`, `version`, `main`, `module`, `types`, `exports`, `type` — always recomputed, never inherited (`typings` is denied so it can't leak alongside the computed `types`).
+- **Dropped:** `devDependencies`, `scripts`, `packageManager`, `private`, `workspaces`, `overrides`, `resolutions`, `pnpm`, tool config blocks (`eslintConfig`, `prettier`, `jest`, …), and `files` (a source `files` list would ship an empty tarball).
 
 The `bin` field is kept but normalized — a leading `./` is stripped (npm rejects bin values starting with `./`).
 

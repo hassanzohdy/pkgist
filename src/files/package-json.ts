@@ -1,25 +1,46 @@
-import path from "path";
 import { readFile, writeFile } from "./file-manager.js";
 import { joinPath } from "../utils/paths.js";
 import { wrapError } from "../utils/errors.js";
 import type { PackageBase } from "../types/index.js";
 
-// Fields kept verbatim from the source package.json into the build package.json.
-const KEPT_FIELDS = [
-  "name",
-  "description",
-  "keywords",
-  "author",
-  "license",
-  "repository",
-  "homepage",
-  "bugs",
-  "dependencies",
-  "peerDependencies",
-  "sideEffects",
-  "bin",
-  "engines",
-] as const;
+/**
+ * Fields NEVER carried into the published package.json.
+ *
+ * Deny-list, not allow-list: a published manifest must inherit any field the
+ * author wrote unless we have a reason to strip it. An allow-list silently
+ * drops the next field npm invents — that is how `peerDependenciesMeta` was
+ * lost, publishing every optional peer as required.
+ */
+export const DROPPED_FIELDS = new Set<string>([
+  // Dev-time only — never meaningful to a consumer.
+  "scripts",
+  "devDependencies",
+  "packageManager",
+  // Monorepo/root-only — inert or misleading on a published leaf package.
+  "private",
+  "workspaces",
+  "overrides",
+  "resolutions",
+  "pnpm",
+  // Would BREAK the output: pkgist emits a purpose-built directory, so a
+  // source `files` (e.g. ["src"]) would ship an empty tarball.
+  "files",
+  // Tool configuration blocks.
+  "eslintConfig",
+  "prettier",
+  "jest",
+  "nodemonConfig",
+  "husky",
+  "lint-staged",
+  // Recomputed below from the build config — never inherited.
+  "version",
+  "main",
+  "module",
+  "types",
+  "typings",
+  "exports",
+  "type",
+]);
 
 export type SourcePackageJson = Record<string, unknown> & {
   version: string;
@@ -163,18 +184,17 @@ export function writeBuildPackageJson(
 
   const output: Record<string, unknown> = {};
 
-  // Copy allowed fields from source
-  for (const field of KEPT_FIELDS) {
-    if (!(field in sourceJson) || sourceJson[field] === undefined) continue;
+  // Pass everything through except the explicitly denied fields.
+  for (const [field, value] of Object.entries(sourceJson)) {
+    if (DROPPED_FIELDS.has(field) || value === undefined) continue;
 
     // Normalize bin paths: npm rejects values that start with "./"
     if (field === "bin") {
-      const raw = sourceJson[field];
-      if (typeof raw === "string") {
-        output["bin"] = raw.replace(/^\.\//, "");
-      } else if (raw && typeof raw === "object") {
+      if (typeof value === "string") {
+        output["bin"] = value.replace(/^\.\//, "");
+      } else if (value && typeof value === "object") {
         const normalized: Record<string, string> = {};
-        for (const [cmd, p] of Object.entries(raw as Record<string, string>)) {
+        for (const [cmd, p] of Object.entries(value as Record<string, string>)) {
           normalized[cmd] = p.replace(/^\.\//, "");
         }
         output["bin"] = normalized;
@@ -182,7 +202,7 @@ export function writeBuildPackageJson(
       continue;
     }
 
-    output[field] = sourceJson[field];
+    output[field] = value;
   }
 
   // Override name / version
