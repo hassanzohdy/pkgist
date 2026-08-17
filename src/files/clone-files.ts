@@ -1,6 +1,6 @@
 import fs from "fs";
 import { copyFile, copyDir, pathExists } from "./file-manager.js";
-import { joinPath } from "../utils/paths.js";
+import { resolveWithinBase } from "../utils/paths.js";
 import { logger } from "../utils/logger.js";
 
 /**
@@ -21,8 +21,15 @@ export function cloneFiles(
     const [srcRel, destRel] =
       typeof entry === "string" ? [entry, entry] : entry;
 
-    const src = joinPath(packageRoot, srcRel);
-    const dest = joinPath(buildDir, destRel);
+    const src = resolveWithinBase(packageRoot, srcRel);
+    const dest = resolveWithinBase(buildDir, destRel);
+
+    if (!src || !dest) {
+      logger.warn(
+        `[clone-files] ${packageName}: clone entry escapes its allowed directory, skipping — ${srcRel} → ${destRel}`,
+      );
+      continue;
+    }
 
     if (!pathExists(src)) {
       logger.warn(`[clone-files] ${packageName}: source file not found, skipping — ${src}`);

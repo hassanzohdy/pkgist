@@ -4,6 +4,16 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ---
 
+## [1.6.4] - 2026-08-17
+
+### Fixed
+
+- **Path traversal in clone-files: a package's own config could write outside its build directory.** `src/files/clone-files.ts` joined the configured source and destination paths onto the package root / build directory without checking where they landed, so a `files` entry like `../../../.ssh/id_rsa` read outside the package and a destination like `../../scripts/postinstall.js` wrote outside `buildDir`. Both paths now go through `resolveWithinBase()` (`src/utils/paths.ts`), which resolves the candidate and returns `null` when it escapes its base; escaping entries are skipped rather than silently redirected.
+
+  The reason this matters more than a normal config bug is what pkgist is: a build tool that runs over packages, in CI, often across a whole monorepo. The configuration it reads is part of the source tree it's building — so "the config is trusted" holds only as far as every commit that touched it does. A copy step that can read arbitrary files into a published tarball, or write into a sibling package's output, is a supply-chain primitive, and the containment check costs nothing.
+
+- **Symlinks are no longer dereferenced when copying build files.** `src/files/file-manager.ts` walked directory entries and followed symlinks, so a link inside the copied tree pulled its *target's* content into the published output — the containment check above is worth little if a link can step over it afterwards. Symlinked entries are now skipped (`entry.isSymbolicLink()`), which is also the right default for a published tarball: npm does not meaningfully preserve them anyway.
+
 ## [1.6.3] - 2026-08-16
 
 ### Fixed

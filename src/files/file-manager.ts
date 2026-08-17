@@ -38,6 +38,7 @@ export function copyDir(src: string, dest: string): void {
   const entries = fs.readdirSync(src, { withFileTypes: true });
   for (const entry of entries) {
     if (COPY_EXCLUDES.has(entry.name)) continue;
+    if (entry.isSymbolicLink()) continue;
     const srcPath = joinPath(src, entry.name);
     const destPath = joinPath(dest, entry.name);
     if (entry.isDirectory()) {

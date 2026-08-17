@@ -16,6 +16,25 @@ export function resolvePath(...segments: string[]): string {
 }
 
 /**
+ * Resolve `segments` relative to `base` and assert the result stays inside `base`.
+ *
+ * Returns the resolved (forward-slash) path, or `null` if the joined path would
+ * escape `base` — e.g. via a `..` segment or an absolute-path segment. Used to
+ * contain config-authored relative paths (like `clone` entries) that must not be
+ * able to read/write outside their intended directory.
+ */
+export function resolveWithinBase(base: string, ...segments: string[]): string | null {
+  const resolvedBase = path.resolve(base);
+  const resolved = path.resolve(resolvedBase, ...segments);
+
+  if (resolved !== resolvedBase && !resolved.startsWith(resolvedBase + path.sep)) {
+    return null;
+  }
+
+  return toForwardSlash(resolved);
+}
+
+/**
  * Build the versioned build output path. The package name is preserved verbatim
  * so scoped packages get a real scope directory:
  *
