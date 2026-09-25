@@ -4,6 +4,11 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ---
 
+## [1.6.5] — 2026-09-25
+
+### Changed
+- Added a grouped Agent Kit skills index for topic-based discovery.
+
 ## [1.6.4] - 2026-08-17
 
 ### Fixed
