@@ -1,0 +1,4 @@
+# Settings for this repo's standalone install (CI). Inside the @mongez workspace the root
+# pnpm-workspace.yaml applies instead.
+allowBuilds:
+  esbuild: true

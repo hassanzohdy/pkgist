@@ -21,8 +21,8 @@
     "pkgist.config.example.ts"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "start": "node dist/cli.js",
     "release": "pkgist build",
     "test": "vitest run",
@@ -41,7 +41,7 @@
     "tsx": "^4.19.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^22.0.0",
     "@types/prettier": "^3.0.0",
     "@types/semver": "^7.5.0",
     "@typescript-eslint/eslint-plugin": "^8.50.0",
@@ -52,8 +52,10 @@
     "eslint-plugin-unused-imports": "^4.3.0",
     "prettier": "^3.7.4",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "tsup": "^8.3.0",
-    "typescript": "^5.6.0",
-    "vitest": "^2.1.9"
-  }
+    "rolldown": "~1.2.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  },
+  "packageManager": "pnpm@12.15.0"
 }

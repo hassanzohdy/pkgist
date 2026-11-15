@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig([
   // Library entry
@@ -8,13 +8,12 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     clean: true,
-    splitting: false,
     shims: true,
     target: "node18",
+    platform: "node",
     outDir: "dist",
-    esbuildOptions(options) {
-      options.platform = "node";
-    },
+    // package.json points at dist/index.js and dist/index.d.ts.
+    fixedExtension: false,
   },
   // CLI entry — the shebang comes from the first line of src/cli.ts
   {
@@ -23,12 +22,10 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     clean: false,
-    splitting: false,
     shims: true,
     target: "node18",
+    platform: "node",
     outDir: "dist",
-    esbuildOptions(options) {
-      options.platform = "node";
-    },
+    fixedExtension: false,
   },
 ]);

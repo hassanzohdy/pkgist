@@ -18,39 +18,41 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22]
+        node: [22, 24]
         os: [ubuntu-latest]
         # Also smoke-test on Windows so path/CRLF regressions in the build
         # output are caught before they ship.
         include:
-          - node: 20
+          - node: 22
             os: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Set up Node.js ${{ matrix.node }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
+          cache: pnpm
 
-      # `npm ci` refuses to run against a lockfile that does not match
-      # package.json. Adding a dependency without refreshing package-lock.json
-      # fails here — and inside the parent yarn workspace a plain
-      # `npm install --package-lock-only` silently reports "up to date" without
-      # writing the entry. Refresh with:
-      #   npm install <pkg> --save-dev --package-lock-only --workspaces=false
+      # `--frozen-lockfile` refuses to run against a pnpm-lock.yaml that does not
+      # match package.json, so adding a dependency without refreshing the lockfile
+      # fails here. This repo keeps its own standalone lockfile; refresh it from
+      # inside the @mongez workspace with:
+      #   pnpm install --lockfile-only --ignore-workspace
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # Release-integrity logic (retry classification, the registry
       # PRESENT/ABSENT/COULD-NOT-ASK decision table, per-phase run reporting)
       # is unit-tested. These guard behaviour that only shows up mid-release,
       # where a regression is expensive and hard to spot.
       - name: Test
-        run: npm test
+        run: pnpm test
 
-      # Compile smoke-test — catches build breaks (tsup) on every push and PR.
+      # Compile smoke-test — catches build breaks (tsdown) on every push and PR.
       - name: Build
-        run: npm run build
+        run: pnpm build
