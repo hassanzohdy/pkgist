@@ -1,4 +1,4 @@
-import simpleGit, { SimpleGit } from "simple-git";
+import { simpleGit, type SimpleGit } from "simple-git";
 import { logger } from "../utils/logger.js";
 import { withRetry } from "../utils/retry.js";
 import type { PhaseOutcome } from "../types/result.js";
