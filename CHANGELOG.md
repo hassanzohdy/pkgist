@@ -4,6 +4,19 @@ All notable changes to `@mongez/pkgist` are documented here. The format follows 
 
 ---
 
+## [1.6.6] — 2026-11-16
+
+### Security
+
+- **`simple-git` ^4.0.2** (runtime dependency). 3.x has 2 critical and 2 high advisories, all bypasses of its unsafe-operation guards: trailer configuration, the `VISUAL` editor variable, git config includes, and abbreviated long options. They are fixed in 4.0.1 and later. `src/git/operations.ts` now imports the named `simpleGit`, because 4.0 removed the default export.
+
+### Changed
+
+- Development tooling only; the published code is unchanged. The package now uses pnpm 12: a standalone `pnpm-lock.yaml` replaces `yarn.lock` / `package-lock.json`, and CI uses `pnpm install --frozen-lockfile`. Tooling is TypeScript 7, Vite 8 and Vitest 5, and CI runs on Node 22 and 24, because Vitest 5 needs Node 22.12 or later.
+- pkgist's own development build (`pnpm build`) uses tsdown instead of tsup. tsup's type-declaration step needs the TypeScript compiler API, which TypeScript 7 does not ship. The output is the same: `dist/index.js` and `dist/cli.js` plus their `.d.ts` files.
+- `rolldown` ~1.2.0 is now a declared dev dependency. `src/compile/tsdown-compiler.ts` imports its `InputOptions` type, which yarn's hoisting used to hide.
+- `@types/node` ^22. A `pnpm-workspace.yaml` now approves esbuild's install script for the standalone CI install.
+
 ## [1.6.5] — 2026-09-25
 
 ### Changed
