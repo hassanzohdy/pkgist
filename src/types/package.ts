@@ -15,8 +15,12 @@ export interface PackageBase {
   srcDir?: string;
   /** minify output. default: false */
   minify?: boolean;
-  /** emit sourcemaps. default: true */
-  sourcemap?: boolean;
+  /**
+   * emit sourcemaps. default: true.
+   * `{ excludeSources: true }` still emits maps but leaves the original sources
+   * (`sourcesContent`) out of them, which makes them much smaller.
+   */
+  sourcemap?: boolean | { excludeSources?: boolean };
   /** emit d.ts declarations. default: true */
   dts?: boolean;
   /**

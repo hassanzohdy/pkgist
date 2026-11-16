@@ -7,6 +7,7 @@ import { joinPath, toForwardSlash, resolvePath } from "../utils/paths.js";
 import { ensureDir, moveFile, listFiles, pathExists } from "../files/file-manager.js";
 import { wrapError } from "../utils/errors.js";
 import { logger } from "../utils/logger.js";
+import { resolveSourcemap } from "./sourcemap.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -114,11 +115,21 @@ export async function compilePackage(
         }
       : undefined;
 
+  const sourcemap = resolveSourcemap(pkg.sourcemap);
+  // `sourcemap: { excludeSources: true }` leaves the original sources out of the maps.
+  const baseOutputOptions = sourcemap.emit && sourcemap.excludeSources
+    ? { sourcemapExcludeSources: true }
+    : {};
+  const outputOptionsFor = (extra: Record<string, unknown> = {}) => {
+    const merged = { ...baseOutputOptions, ...extra };
+    return Object.keys(merged).length > 0 ? { outputOptions: merged } : {};
+  };
+
   // Common options shared across all tsdown invocations.
   const sharedOptions = {
     entry: entries,
     deps: { neverBundle: externals },
-    sourcemap: pkg.sourcemap !== false,
+    sourcemap: sourcemap.emit,
     clean: true,
     minify: pkg.minify ?? false,
     tsconfig: tsconfig ?? true,
@@ -139,10 +150,10 @@ export async function compilePackage(
           format: ["esm"],
           dts: pkg.dts !== false,
           outDir: tmpEsm,
-          outputOptions: {
+          ...outputOptionsFor({
             preserveModules: true,
             preserveModulesRoot: srcDir,
-          },
+          }),
         }),
         build({
           ...sharedOptions,
@@ -150,6 +161,7 @@ export async function compilePackage(
           // CJS skips DTS — types are served from ESM declarations (see package-json.ts).
           dts: false,
           outDir: tmpCjs,
+          ...outputOptionsFor(),
         }),
       ]);
 
@@ -169,9 +181,11 @@ export async function compilePackage(
         format: formats as ("esm" | "cjs")[],
         dts: pkg.dts !== false,
         outDir: tmpDir,
-        ...(shouldPreserveModules && formats.includes("esm")
-          ? { outputOptions: { preserveModules: true, preserveModulesRoot: srcDir } }
-          : {}),
+        ...outputOptionsFor(
+          shouldPreserveModules && formats.includes("esm")
+            ? { preserveModules: true, preserveModulesRoot: srcDir }
+            : {},
+        ),
       });
 
       reorganiseOutput(tmpDir, buildPath, formats as ("esm" | "cjs")[], pkg, shouldPreserveModules);

@@ -179,7 +179,7 @@ If your config carries operational secrets (commit conventions, internal layouts
 | `entries` | `string \| string[]` | `["index.ts"]` | Entry files inside `srcDir` |
 | `srcDir` | `string` | `"src"` | Source directory name |
 | `dts` | `boolean` | `true` | Generate declarations |
-| `sourcemap` | `boolean` | `true` | Emit sourcemaps |
+| `sourcemap` | `boolean \| { excludeSources?: boolean }` | `true` | Emit sourcemaps. `{ excludeSources: true }` emits maps without the original sources (`sourcesContent`, rolldown's `sourcemapExcludeSources`), so a package can ship maps without doubling its size; `true` / `false` unchanged |
 | `minify` | `boolean` | `false` | Minify output (rarely useful for libraries) |
 | `preserveModules` | `boolean` | `true` | Keep one output file per source module (preserves stack traces) |
 
@@ -886,6 +886,12 @@ Or per-package `commit: false`.
 # Changelog
 
 > **Auto-trigger:** user asks what's new in pkgist, what changed between versions, or which version introduced/fixed a behavior. Mirrors `CHANGELOG.md` (Keep a Changelog + SemVer). Newest first.
+
+## [1.7.0] - 2026-11-16
+
+- **Added — `sourcemap: { excludeSources: true }`** emits source maps without the original sources (rolldown's `sourcemapExcludeSources`), so a package can ship maps without doubling its size. `sourcemap: true` / `false` are unchanged.
+- **Security — `simple-git` ^4.0.2** (runtime dependency; 3.x had critical and high advisories in its unsafe-operation guards).
+- **Changed — development tooling only:** pnpm 12, TypeScript 7, Vite 8, Vitest 5, tsdown for pkgist's own build; the published code is unchanged.
 
 ## [1.4.0] - 2026-06-06
 

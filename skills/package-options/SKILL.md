@@ -25,7 +25,7 @@ Every entry in `standalone[]` and `families[].packages[]` accepts these fields. 
 | `entries` | `string \| string[]` | `["index.ts"]` | Entry files inside `srcDir`. Use an array for packages with multiple bins (e.g. CLI + library) |
 | `srcDir` | `string` | `"src"` | Source directory name relative to the package root |
 | `dts` | `boolean` | `true` | Generate `.d.ts` / `.d.mts` / `.d.cts` declarations |
-| `sourcemap` | `boolean` | `true` | Emit sourcemaps alongside JS output |
+| `sourcemap` | `boolean \| { excludeSources?: boolean }` | `true` | Emit sourcemaps alongside JS output. `{ excludeSources: true }` emits maps without the original sources (`sourcesContent`); `true`/`false` unchanged |
 | `minify` | `boolean` | `false` | Minify output (rarely useful for libraries — consumers do this) |
 | `preserveModules` | `boolean` | `true` | Keep one output file per source module (preserves stack traces). See below. |
 

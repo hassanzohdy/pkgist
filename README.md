@@ -183,7 +183,7 @@ Every entry in `standalone[]` and `families[].packages[]` accepts these fields. 
 | `entries` | `string \| string[]` | `["index.ts"]` | Entry files inside `srcDir`. Use an array for multi-entry packages (CLI + library). |
 | `srcDir` | `string` | `"src"` | Source directory name. |
 | `dts` | `boolean` | `true` | Emit `.d.ts` / `.d.mts` / `.d.cts` declarations. |
-| `sourcemap` | `boolean` | `true` | Emit sourcemaps. |
+| `sourcemap` | `boolean \| { excludeSources?: boolean }` | `true` | Emit sourcemaps. `{ excludeSources: true }` still emits them but leaves the original sources (`sourcesContent`) out, which shrinks them a lot; `true` and `false` behave as before. |
 | `minify` | `boolean` | `false` | Minify output (rarely useful for libraries). |
 | `preserveModules` | `boolean` | `true` | Keep one output file per source module (real stack traces) instead of one bundle. |
 | `clone` | `(string \| [string,string])[]` | `[]` | Files/dirs to copy into the build. `"README.md"` copies as-is; `["src","dest"]` renames. |

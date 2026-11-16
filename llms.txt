@@ -15,7 +15,7 @@ Every export and CLI option ships from the package root: `import { defineConfig 
 
 - [Configuration](https://raw.githubusercontent.com/hassanzohdy/pkgist/main/skills/configuration/SKILL.md): single `pkgist.config.ts` (or `.js`) shape, `pkgist init` scaffolding, `defineConfig`, `settings`, `standalone[]`, `families[]`.
   - *Auto-trigger:* When editing the pkgist config file, running `pkgist init`, or asking how to set up pkgist.
-- [Package options](https://raw.githubusercontent.com/hassanzohdy/pkgist/main/skills/package-options/SKILL.md): Every per-package field (`name`, `root`, `type`, `formats`, `mainType`, `entries`, `srcDir`, `dts`, `sourcemap`, `minify`, `preserveModules`, `clone`, `publish`, `access`, `branch`).
+- [Package options](https://raw.githubusercontent.com/hassanzohdy/pkgist/main/skills/package-options/SKILL.md): Every per-package field (`name`, `root`, `type`, `formats`, `mainType`, `entries`, `srcDir`, `dts`, `sourcemap` (`boolean | { excludeSources }`), `minify`, `preserveModules`, `clone`, `publish`, `access`, `branch`).
   - *Auto-trigger:* When configuring a package entry or asking about specific fields.
 - [Versioning](https://raw.githubusercontent.com/hassanzohdy/pkgist/main/skills/versioning/SKILL.md): `"auto"` / `"patch"` / `"minor"` / `"major"` / literal-string strategies, the per-run `--bump <strategy>` CLI override, family bump rules (highest current + 1), and intra-family dependency pinning (sibling `"*"` → exact shared version in the published package.json).
   - *Auto-trigger:* When asking about version bumps, semver strategies, the `--bump` flag, family synchronization, or how sibling/family dependency versions are written on publish.
